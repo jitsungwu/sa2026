@@ -123,6 +123,35 @@ npm run mcp:start
 # 啟動後，請透過支援 MCP 的代理或編輯器插件提交檔案（包含檔案路徑、commit 訊息與目標分支）。
 ```
 
+## Frontend Design Updates
+
+This project recently adopted a new frontend design inspired by the ClassCue reference site. The design changes include a centralized color system, updated header/footer layout, responsive adjustments, and accessibility improvements.
+
+- Files updated:
+   - `src/styles/globals.css` — design tokens (color variables), global styles, responsive rules, and focus-visible styles
+   - `src/app/layout.jsx` — header and footer structure
+   - `src/app/page.jsx` — homepage markup updated to use semantic classes
+   - `src/app/test-list.jsx` — test-list table wrapped for responsive layout
+
+- Color palette (ClassCue reference):
+   - Primary (header/footer): `#aa5486`
+   - Header text: `#fbf4db`
+   - Background: `#f8fafc`
+   - Surface/panels: `#ffffff`
+   - Accent (question): `#ffa725`
+   - Acceptance (secondary): `#27548a`
+   - Cancel: `#d84040`
+   - Register: `#1abc9c`
+
+- Preview & Test:
+   ```bash
+   npm run dev       # start dev server
+   npm run test      # unit tests (Vitest)
+   npx playwright test  # E2E tests (Playwright)
+   ```
+
+For implementation details and design rationale see `instructions.md` in the project root.
+
 Why use MCP:
 - Avoid exposing personal PATs or SSH keys in ad-hoc scripts.
 - Operations via MCP are easier to audit and restrict.
