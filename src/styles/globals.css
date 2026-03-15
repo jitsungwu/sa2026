@@ -1,0 +1,9 @@
+html, body {
+  padding: 0;
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
+}
+
+* { box-sizing: border-box; }
+
+button { padding: 8px 12px; border-radius: 6px; }

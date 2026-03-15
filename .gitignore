@@ -1,0 +1,10 @@
+test-results/
+.next/
+node_modules/
+dist/
+.env.local
+.firebase/
+/.idea
+.vscode
+*.log
+.DS_Store
