@@ -27,34 +27,36 @@ export default function TestCollectionPage() {
   if (error) return <div style={{color: 'red'}}>{error}</div>
 
   return (
-    <main style={{padding: 24}}>
+    <main>
       <h1>Test 集合 - 學生資料</h1>
-      <table border="1" cellPadding="8" style={{borderCollapse: 'collapse', marginTop: 16}}>
-        <thead>
-          <tr>
-            <th>姓名</th>
-            <th>學訅</th>
-            <th>班級</th>
-            <th>分數</th>
-            <th>Email</th>
-            <th>加入日期</th>
-            <th>Document ID</th>
-          </tr>
-        </thead>
-        <tbody>
-          {students.map(s => (
-            <tr key={s.id}>
-              <td>{s.name}</td>
-              <td>{s.studentId}</td>
-              <td>{s.class}</td>
-              <td>{s.grade}</td>
-              <td>{s.email}</td>
-              <td>{s.joinDate ? new Date(s.joinDate).toLocaleString() : ""}</td>
-              <td>{s.id}</td>
+      <div className="table-wrap" style={{marginTop: 16}}>
+        <table className="data-table" role="table">
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>學訅</th>
+              <th>班級</th>
+              <th>分數</th>
+              <th>Email</th>
+              <th>加入日期</th>
+              <th>Document ID</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {students.map(s => (
+              <tr key={s.id}>
+                <td>{s.name}</td>
+                <td>{s.studentId}</td>
+                <td>{s.class}</td>
+                <td>{s.grade}</td>
+                <td>{s.email}</td>
+                <td>{s.joinDate ? new Date(s.joinDate).toLocaleString() : ""}</td>
+                <td>{s.id}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {students.length === 0 && <div>目前沒有資料。</div>}
     </main>
   )

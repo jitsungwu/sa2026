@@ -1,9 +1,88 @@
-html, body {
-  padding: 0;
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
+:root {
+  --color-primary: #aa5486;   /* 紫紅色主色 */
+  --color-accent: #ffa725;    /* 橙色 - Question */
+  --color-secondary: #27548a; /* 深藍 - Acceptance */
+  --color-cancel: #d84040;    /* 紅色 - Cancel */
+  --color-register: #1abc9c;  /* 青綠色 - Register */
+  --color-bg: #f8fafc;        /* 淺灰藍背景 */
+  --color-surface: #ffffff;   /* 白色表面 */
+  --color-text: #fbf4db;      /* 奶油白文字 */
+  --color-text-dark: #334155; /* 深灰文字 */
+  --radius: 12px;
+  --container-width: 1024px;
 }
 
 * { box-sizing: border-box; }
 
-button { padding: 8px 12px; border-radius: 6px; }
+html, body {
+  padding: 0;
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background: var(--color-bg);
+  color: var(--color-text-dark);
+}
+
+.container { max-width: var(--container-width); margin: 0 auto; padding: 24px; }
+
+.site-header { background: var(--color-primary); border-bottom: none; }
+.brand { font-weight: 700; font-size: 1.1rem; color: var(--color-text); text-decoration: none; }
+.nav a { color: var(--color-text); margin-left: 16px; text-decoration: none; }
+
+.hero { background: var(--color-surface); padding: 32px; border-radius: var(--radius); box-shadow: 0 6px 20px rgba(2,6,23,0.04); }
+.hero h1 { margin: 0 0 8px 0; font-size: 1.5rem; color: var(--color-text-dark); }
+.hero p { margin: 0 0 12px 0; color: var(--color-text-dark); }
+
+.btn { display:inline-block; padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; }
+.btn-primary { background: var(--color-primary); color: var(--color-text); box-shadow: 0 4px 12px rgba(170,84,134,0.3); }
+.btn-accent { background: var(--color-accent); color: #fff; }
+.btn-secondary { background: var(--color-secondary); color: #fff; }
+
+.table-wrap { overflow:auto; background: var(--color-surface); padding: 12px; border-radius: 8px; box-shadow: 0 6px 20px rgba(2,6,23,0.03); }
+.data-table { width:100%; border-collapse:collapse; min-width:700px; }
+.data-table th, .data-table td { padding:10px 12px; border-bottom:1px solid rgba(15,23,42,0.06); text-align:left; color: var(--color-text-dark); }
+.data-table thead th { background: rgba(15,23,42,0.02); font-weight:600; }
+
+.site-footer { padding:20px 0; background: var(--color-primary); color: var(--color-text); font-size:0.9rem; }
+
+@media (max-width:640px) {
+  .container{padding:16px}
+  .hero{padding:16px}
+  .data-table{min-width:560px}
+}
+
+/* Accessibility & Focus Styles */
+.btn:focus-visible, a:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 2px; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); transition: all 200ms ease; }
+.btn:active { transform: translateY(0); }
+
+/* Link Styles */
+a { color: var(--color-primary); text-decoration: none; transition: color 200ms ease; }
+a:hover { color: var(--color-secondary); text-decoration: underline; }
+a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* Input & Form Styles */
+input, select { border: 1px solid rgba(15,23,42,0.1); border-radius: 6px; padding: 8px 12px; font-size: 1rem; transition: border-color 200ms ease, box-shadow 200ms ease; }
+input:focus, select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(170,84,134,0.1); }
+
+/* Responsive Typography */
+@media (max-width: 768px) {
+  .hero h1 { font-size: 1.2rem; }
+  .hero { padding: 24px; }
+  .container { padding: 16px; }
+}
+
+@media (max-width: 480px) {
+  .hero { padding: 16px; }
+  .container { padding: 12px; }
+  .brand { font-size: 1rem; }
+  .nav a { margin-left: 8px; font-size: 0.9rem; }
+  .data-table { font-size: 0.9rem; padding: 8px; }
+}
+
+/* Loading & States */
+.loading { opacity: 0.7; cursor: wait; }
+.error { color: var(--color-cancel); background: rgba(216,64,64,0.1); padding: 12px; border-radius: 6px; }
+.success { color: var(--color-register); background: rgba(26,188,156,0.1); padding: 12px; border-radius: 6px; }
+
+/* Smooth Transitions */
+* { transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease; }
