@@ -88,8 +88,7 @@ Purpose
 - **Project Name**: sa2026
 - **Visibility**: Public
 
-**Recent Work (Latest Update)**
-- 2026-03-15: Initialized project and pushed to GitHub (`jitsungwu/sa2026`).
+**Recent Work (Latest Update)**n- 2026-03-15: Initialized project and pushed to GitHub (`jitsungwu/sa2026`).
 - Added complete Next.js + Firebase + Turbopack scaffold with testing setup.
 - Implemented `/test-list` page and route structure (`src/app/test-list/` directory with shared component pattern).
 - Added unit tests (`__tests__/`) using Vitest with Firebase module mocking.
@@ -97,19 +96,3 @@ Purpose
 - Added `scripts/add-test-data.js` for populating Firestore `test` collection with sample student data.
 - Configured MCP server support via `.mcprc` and `FIREBASE_MCP_SETUP.md`.
 - Set root document language to Traditional Chinese (`zh-Hant`).
-
-If anything above is unclear or you want instructions to be more prescriptive (example PR templates, local debugging steps, CI/CD setup, or contributing guidelines), tell me which section to expand.
-
-**Repository Uploads (Use MCP)**
-- **Policy**: 從現在起，請優先利用 MCP（Firebase MCP 伺服器）上傳或推送專案檔案到 GitHub，讓 AI 代理與編輯器整合可以更安全且可審計地執行變更。
-- **How to start MCP locally**:
-
-```bash
-npm run mcp:start
-# or, if you prefer explicit npx:
-npx -y firebase-tools@latest mcp --dir .
-```
-
-- **Agent workflow**: 啟動 MCP 伺服器後，指示 AI 代理使用 MCP 工具將變更上傳至 GitHub，並提供：檔案路徑、commit 訊息、目標分支（預設 `main`）。
-- **Why**: MCP 提供受控的遠端操作通道，避免在本地暴露個人 token 或 SSH 金鑰，並能讓操作可追蹤與審計。
-- **Fallback**: 若 MCP 無法使用，可使用 `gh auth login` 或本機安全 token 方式，但請先與專案維護者確認流程與授權範圍。
