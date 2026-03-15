@@ -1,14 +1,18 @@
+import dotenv from 'dotenv'
 import { initializeApp, getApps } from 'firebase/app'
 import { getFirestore, collection, addDoc } from 'firebase/firestore'
 
-// Firebase 配置
+// 加載環境變數
+dotenv.config({ path: '.env.local' })
+
+// Firebase 配置 - 使用環境變數
 const firebaseConfig = {
-  apiKey: "REMOVED",
-  authDomain: "fju-im-sa.firebaseapp.com",
-  projectId: "fju-im-sa",
-  storageBucket: "fju-im-sa.firebasestorage.app",
-  messagingSenderId: "613242701553",
-  appId: "1:613242701553:web:d1ed3e5680025277d64b50"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 }
 
 // 初始化 Firebase
