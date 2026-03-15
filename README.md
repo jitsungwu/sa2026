@@ -95,3 +95,34 @@ The `webpack` function in `next.config.js` is preserved for:
 3. Run tests: `npm run test` (unit) or `npm run test:e2e` (E2E)
 4. Build: `npm run build` → `npm run start` for production preview
 5. Deploy: `npm run deploy` to Firebase Hosting
+
+## MCP Usage (Recommended for agent uploads)
+
+This project supports using a local MCP (Model Context Protocol) server to safely allow AI agents or editor integrations to modify and push repository files.
+
+Quick start (local):
+
+```bash
+# Start the Firebase MCP server (runs locally and exposes an agent endpoint)
+npm run mcp:start
+
+# After MCP is running, instruct your agent/editor to use the MCP server to push commits.
+# Example agent payloads typically specify: file paths, commit message, branch (default: main).
+```
+
+Security notes:
+- MCP provides an auditable channel for remote agents — prefer MCP over sharing personal tokens.
+- If MCP is unavailable, use `gh auth login` to authenticate the `gh` CLI and push changes manually.
+
+如果你偏好中文說明：
+
+```bash
+# 啟動本機 MCP 伺服器
+npm run mcp:start
+
+# 啟動後，請透過支援 MCP 的代理或編輯器插件提交檔案（包含檔案路徑、commit 訊息與目標分支）。
+```
+
+Why use MCP:
+- Avoid exposing personal PATs or SSH keys in ad-hoc scripts.
+- Operations via MCP are easier to audit and restrict.

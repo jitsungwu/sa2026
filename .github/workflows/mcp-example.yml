@@ -1,0 +1,35 @@
+name: MCP Example
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mcp-example:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install firebase-tools (for MCP)
+        run: |
+          npm ci --ignore-scripts || npm i -g firebase-tools
+
+      - name: Show MCP usage note
+        run: |
+          echo "This workflow is an example showing where MCP-related steps could run."
+          echo "MCP is primarily intended to run locally; running MCP in CI requires careful auth and env setup."
+
+      # Example placeholder: start MCP and run a scripted agent task (not executed by default)
+      - name: Example: Start MCP (placeholder)
+        run: |
+          echo "# To run MCP in CI, you would run:"
+          echo "# npx -y firebase-tools@latest mcp --dir . --non-interactive"
+          echo "# Then have an agent interact with the MCP endpoint to apply changes."
+
+      - name: Finish
+        run: echo "MCP example workflow completed (no changes applied)."
