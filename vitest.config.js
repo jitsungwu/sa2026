@@ -3,7 +3,8 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node',
+    environment: 'jsdom',
+    setupFiles: ['./vitest.setup.js'],
     include: ['**/__tests__/**/*.test.js'],
     exclude: ['**/__tests__/**/*.test.jsx', '**/node_modules/**', '**/.next/**'],
     reporters: ['default', 'html'],

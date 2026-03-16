@@ -2,14 +2,14 @@
 
 ## ## 1. Implementation Goals
 - [ ] 多班級數據隔離 (甲/乙班)。
-- [ ] 實時組別舉手競速 (毫秒級排序)。
+- [ ] 即時組別舉手競速 (毫秒級排序)。
 - [ ] 自動加總積分榜。
 - [ ] 教師端重置功能。
 
 ## ## 2. User Stories & Acceptance Criteria (AC)
 
 ### ### Epic 1: Teacher Control
-- **US 1.1 Monitor:** 在 `/class/[classId]/monitor` 顯示實時舉手名單。
+- **US 1.1 Monitor:** 在 `/class/[classId]/monitor` 顯示即時舉手名單。
   - **AC:** 依照 `timestamp` 升序排列。
 - **US 1.2 Scoring:** 點選舉手組別後加分。
   - **AC:** 新增一筆 `participation_logs` 資料。

@@ -52,6 +52,20 @@ try {
 
 const provider = new GoogleAuthProvider()
 const signInWithGoogle = () => signInWithPopup(auth, provider)
-const signOutUser = () => signOut(auth)
+
+const signOutUser = async () => {
+  try {
+    await signOut(auth)
+  } finally {
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem('activeClass')
+        window.localStorage.removeItem('selectedGroup')
+      } catch (e) {
+        // ignore localStorage errors
+      }
+    }
+  }
+}
 
 export { auth, db, signInWithGoogle, signOutUser, useEmulator }

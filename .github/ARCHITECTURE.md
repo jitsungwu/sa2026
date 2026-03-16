@@ -85,7 +85,7 @@
 - `timestamp`: serverTimestamp (紀錄時間戳)
 - `studentId`: string | null (當前 Scaffold 階段為 null)
 
-**用途**：追蹤學生在課堂中的參與度和積分，支援實時聚合
+**用途**：追蹤學生在課堂中的參與度和積分，支援即時聚合
 
 #### 集合：`hands_raised`（舉手狀態）
 - `classId`: string (所屬班級 ID)
@@ -99,7 +99,7 @@
 
 #### 即時同步機制
 - **教師監控面板**：監聽 `hands_raised` 集合（`status == 'active'`，按 `timestamp` 升序）
-- **學生/教師檢視**：監聽 `participation_logs` 集合以實時聚合總積分
+- **學生/教師檢視**：監聽 `participation_logs` 集合以即時聚合總積分
 
 #### 狀態管理策略
 - 使用 URL Search Params 或路由 `params` 傳遞 `classId` 和 `groupId`

@@ -12,7 +12,7 @@ export default function RootLayout({ children }) {
           <header className="site-header">
             <div className="container" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
               <a href="/" className="brand">ClassCue</a>
-              <nav className="nav"><a href="/test-list">Test 集合</a></nav>
+              <nav className="nav"></nav>
             </div>
           </header>
 
