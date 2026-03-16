@@ -1,7 +1,7 @@
 "use client"
 import React, { useEffect, useState } from 'react'
 import { db } from '../firebaseClient'
-import { collection, getDocs } from '../lib/firestoreWrapper'
+import { collection, getDocs, doc, setDoc, serverTimestamp } from '../lib/firestoreWrapper'
 
 export default function HomePage() {
   const [user, setUser] = useState(null)
@@ -93,27 +93,38 @@ export default function HomePage() {
         {!activeClassId ? (
           <div>
             <h2>還沒開始上課</h2>
-            {user && (
-              <div style={{ marginTop: 12 }}>
-                <label>老師：選擇要啟動的班級：</label>
-                <select value={selectedClass?.id || ''} onChange={(e) => {
-                  const cls = classes.find(c => c.id === e.target.value)
-                  setSelectedClass(cls)
-                  setSelectedGroup(cls?.groups?.[0] || 1)
-                }}>
-                  {classes.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-                <div style={{ marginTop: 8 }}>
-                  <button className="btn btn-primary" onClick={() => {
-                    if (!selectedClass) return
-                    window.localStorage.setItem('activeClass', selectedClass.id)
-                    setActiveClassId(selectedClass.id)
-                  }}>啟動班級</button>
-                </div>
+            <div style={{ marginTop: 12 }}>
+              <label>老師：選擇要啟動的班級：</label>
+              <select value={selectedClass?.id || ''} onChange={(e) => {
+                const cls = classes.find(c => c.id === e.target.value)
+                setSelectedClass(cls)
+                setSelectedGroup(cls?.groups?.[0] || 1)
+              }}>
+                {classes.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <div style={{ marginTop: 8 }}>
+                <button className="btn btn-primary" onClick={async () => {
+                  if (!selectedClass) return
+                  try { window.localStorage.setItem('activeClass', selectedClass.id) } catch (e) {}
+                  setActiveClassId(selectedClass.id)
+                  if (db) {
+                    try {
+                      await setDoc(doc(db, 'classes', selectedClass.id), {
+                        name: selectedClass.name || selectedClass.id,
+                        active: true,
+                        activatedAt: serverTimestamp(),
+                        activatedBy: (typeof window !== 'undefined' && window.localStorage.getItem('participantId')) || null,
+                      }, { merge: true })
+                    } catch (err) {
+                      console.error('無法在 Firestore 啟動班級', err)
+                    }
+                  }
+                }}>啟動班級</button>
+                <span style={{ marginLeft: 8, color: '#666' }}>{user ? '已登入：可管理本班' : '未登入：啟動班級後請至老師頁登入以取得管理權限'}</span>
               </div>
-            )}
+            </div>
           </div>
         ) : (
           // 班級已啟動：顯示該班級與組別選擇

@@ -53,8 +53,14 @@ try {
 const provider = new GoogleAuthProvider()
 const signInWithGoogle = () => signInWithPopup(auth, provider)
 
+import { doc, setDoc, serverTimestamp } from './lib/firestoreWrapper'
+
 const signOutUser = async () => {
+  let activeId = null
   try {
+    if (typeof window !== 'undefined') {
+      activeId = window.localStorage.getItem('activeClass')
+    }
     await signOut(auth)
   } finally {
     if (typeof window !== 'undefined') {
@@ -63,6 +69,13 @@ const signOutUser = async () => {
         window.localStorage.removeItem('selectedGroup')
       } catch (e) {
         // ignore localStorage errors
+      }
+    }
+    if (db && activeId) {
+      try {
+        await setDoc(doc(db, 'classes', activeId), { active: false, endedAt: serverTimestamp() }, { merge: true })
+      } catch (err) {
+        console.error('無法在 Firestore 結束班級狀態', err)
       }
     }
   }

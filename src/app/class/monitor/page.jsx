@@ -4,7 +4,7 @@ import HandsMonitor from '../../../components/HandsMonitor'
 import EndClassButton from '../../../components/EndClassButton'
 import { auth, signInWithGoogle, signOutUser, db } from '../../../firebaseClient'
 import { onAuthStateChanged } from 'firebase/auth'
-import { collection, getDocs } from '../../../lib/firestoreWrapper'
+import { collection, getDocs, doc, setDoc, serverTimestamp } from '../../../lib/firestoreWrapper'
 
 export default function MonitorPage() {
   const [user, setUser] = useState(null)
@@ -85,14 +85,25 @@ export default function MonitorPage() {
           <button
             className="btn btn-primary"
             style={{ marginLeft: 12 }}
-            onClick={() => {
+            onClick={async () => {
               if (!selected) return
               try { window.localStorage.setItem('activeClass', selected) } catch (e) {}
               setClassId(selected)
+              if (db) {
+                try {
+                  await setDoc(doc(db, 'classes', selected), {
+                    name: classes.find(c => c.id === selected)?.name || selected,
+                    active: true,
+                    activatedAt: serverTimestamp(),
+                    activatedBy: user?.uid || null,
+                  }, { merge: true })
+                } catch (err) {
+                  console.error('無法在 Firestore 啟動班級', err)
+                }
+              }
             }}
-            disabled={!user}
           >啟動班級</button>
-          {!user && <span style={{ marginLeft: 8, color: '#666' }}>請先登入以啟動班級</span>}
+          <span style={{ marginLeft: 8, color: '#666' }}>{user ? '登入後可管理與結束課程' : '未登入：仍可啟動班級，但登入可取得管理權限'}</span>
         </div>
       )}
 
