@@ -76,24 +76,42 @@
 - `name`: string (班級名稱，例如 "甲班", "乙班")
 - `groupCount`: number (預設分組數 10)
 
+- `active`: boolean (教師是否已啟動此班級，用於學生入口檢查)
+- `activatedAt`: timestamp | null (啟動時間)
+- `activatedBy`: string | null (啟動者 uid 或標示)
+
 **用途**：儲存班級基本資訊，用於教師查看和管理
+**備註**：有提供 `scripts/seed-classes.js` 可用來建立預設班級 (2A/2B/demo)
 
 #### 集合：`participation_logs`（學生參與紀錄）
 - `classId`: string (所屬班級 ID)
-- `groupId`: string (所屬小組 ID)
-- `points`: number (累積分數)
-- `timestamp`: serverTimestamp (紀錄時間戳)
-- `studentId`: string | null (當前 Scaffold 階段為 null)
+ - `classId`: string (所屬班級 ID)
+ - `group`: string|number (所屬小組，保留以利即時聚合)
+ - `points`: number (該筆紀錄的分數增量，通常為 1)
+ - `timestamp`: serverTimestamp (紀錄時間戳)
+ - `studentId`: string | null (如可辨識學生則填入，否則為 null)
+ - `handRef`: DocumentReference (選填，指向原始 `hands_raised` 文件以保留追溯資訊)
 
 **用途**：追蹤學生在課堂中的參與度和積分，支援即時聚合
 
+**設計說明**：為避免在 `participation_logs` 複製大量 `hands_raised` 欄位，我們只保留最小必要欄位 (`classId`/`group`/`points`)，並新增 `handRef` 作為必要時的回溯引用。
+
 #### 集合：`hands_raised`（舉手狀態）
 - `classId`: string (所屬班級 ID)
-- `groupId`: string (所屬小組 ID)
-- `timestamp`: serverTimestamp (舉手時間戳)
-- `status`: string ("active" | "resolved" - 待解決或已解決)
+
+ - `classId`: string (所屬班級 ID)
+ - `group`: string|number (所屬小組 ID)
+ - `ownerId`: string (舉手者的 participantId 或學生 uid)
+ - `timestamp`: serverTimestamp (舉手時間戳)
+ - `active`: boolean (是否仍在候補隊列，教師採取動作後會設為 false)
+ - `resolved`: boolean (是否已被教師處理/裁定)
+ - `cancelled`: boolean (若學生主動取消則為 true)
 
 **用途**：即時跟踪學生舉手狀態，教師可即時監控
+
+**設計說明**：`hands_raised` 保持即時性與完整性，教師在加分時會在 `participation_logs` 新增一筆（含 `handRef`），並把該 hand 的 `active` 設為 `false` 與 `resolved:true`。
+
+教師按下「結束上課」會把 `classes/{id}.active` 設為 `false`（由 `EndClassButton` 實作），以避免非授權學生再度進入。
 
 ### 2. 資料流
 

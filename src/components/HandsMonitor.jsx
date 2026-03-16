@@ -20,11 +20,13 @@ export default function HandsMonitor({ classId }) {
 
   const handleAward = async (hand) => {
     try {
+      // Create a participation log that references the original hand document
       await addDoc(collection(db, 'participation_logs'), {
         classId: hand.classId || classId,
         group: hand.group,
         timestamp: serverTimestamp(),
-        points: 1
+        points: 1,
+        handRef: doc(db, 'hands_raised', hand.id)
       })
       await updateDoc(doc(db, 'hands_raised', hand.id), { active: false, resolved: true })
     } catch (err) {

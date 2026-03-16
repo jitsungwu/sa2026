@@ -1,20 +1,33 @@
 "use client"
 import React from 'react'
 import { useRouter } from 'next/navigation'
+import { db } from '../firebaseClient'
+import { doc, setDoc, serverTimestamp } from '../lib/firestoreWrapper'
 
 export default function EndClassButton({ classId }) {
   const router = useRouter()
 
-  const handleEnd = () => {
+  const handleEnd = async () => {
+    try {
+      if (db && classId) {
+        try {
+          await setDoc(doc(db, 'classes', classId), { active: false, endedAt: serverTimestamp() }, { merge: true })
+        } catch (err) {
+          console.error('無法在 Firestore 標記課程為結束', err)
+        }
+      }
+    } catch (e) {
+      // continue to clearing local state
+    }
+
     try {
       window.localStorage.removeItem('activeClass')
       window.localStorage.removeItem('selectedGroup')
     } catch (e) {}
-    // force full reload to ensure all clients see cleared state and homepage reloads
+
     try {
       window.location.href = '/'
     } catch (e) {
-      // fallback to router replace
       router.replace('/')
     }
   }

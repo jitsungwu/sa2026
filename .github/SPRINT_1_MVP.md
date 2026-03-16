@@ -9,12 +9,12 @@
 ## ## 2. User Stories & Acceptance Criteria (AC)
 
 ### ### Epic 1: Teacher Control
-- **US 1.1 Monitor:** 在 `/class/[classId]/monitor` 顯示即時舉手名單。
+ - **US 1.1 Monitor:** 在 `/class/monitor` 顯示即時舉手名單（教師介面，可選擇並啟動班級）。
   - **AC:** 依照 `timestamp` 升序排列。
-- **US 1.2 Scoring:** 點選舉手組別後加分。
+ - **US 2.1 Raise Hand:** 在 `/class/student` 提供舉手按鈕（學生需於首頁選擇班級與組別，或以 `?group=N` 參數進入）。
   - **AC:** 新增一筆 `participation_logs` 資料。
-- **US 1.3 Reset:** 一鍵清空舉手名單。
-  - **AC:** 將所有該班 `active` 狀態更新為 `resolved`。
+ - `/class/student?group=N`: 學生舉手與看分頁
+ - `/class/monitor`: 老師大螢幕監控頁
 
 ### ### Epic 2: Student Interaction
 - **US 2.1 Raise Hand:** 在 `/class/[classId]/student` 提供舉手按鈕。
