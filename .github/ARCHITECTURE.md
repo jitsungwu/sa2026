@@ -69,20 +69,33 @@
 
 ## 資料模型
 
-### Firestore 集合：`test`
-用來存儲學生測驗資料的主要集合。
+# System Architecture & Data Model
 
-**文件結構範例：**
-```javascript
-{
-  id: "doc-id",
-  name: "Student Name",
-  email: "student@example.com",
-  score: 85,
-  createdAt: Timestamp,
-  updatedAt: Timestamp
-}
-```
+## 1. Firestore Schema
+
+### Collection: `classes`
+- `id`: string (Document ID: "class-A", "class-B")
+- `name`: string ("甲班", "乙班")
+- `groupCount`: number (預設 10)
+
+### Collection: `participation_logs`
+- `classId`: string
+- `groupId`: string
+- `points`: number
+- `timestamp`: serverTimestamp
+- `studentId`: string | null (當前 Scaffold 阶段為 null)
+
+### Collection: `hands_raised`
+- `classId`: string
+- `groupId`: string
+- `timestamp`: serverTimestamp
+- `status`: string ("active" | "resolved")
+
+## 2. Data Flow
+- **Real-time Synchronization:** - Teacher monitor listens to `hands_raised` (status == 'active', orderBy 'timestamp' asc).
+  - Student/Teacher views listen to `participation_logs` to aggregate total points.
+- **State Management:** - Use URL Search Params or `params` for `classId` and `groupId`.
+  - Store `groupId` in `localStorage` once selected by student.
 
 **相關操作：**
 - 讀取：使用 `useEmulator` 切換本地或雲端

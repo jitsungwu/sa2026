@@ -45,7 +45,7 @@ Scaffold（應用基礎架構）目標是建立一個完整的前端應用基礎
   - [ ] 搜尋查詢邏輯實現
   - [ ] 排序功能詳細實現
   - [ ] 分頁或無限滾動
-  - [ ] 編輯 / 刪除按鈕功能
+  - [ ] 編輯 / 刪除按鈕功能 → 後續迭代
 
 - [ ] **測試覆蓋**
   - [ ] 單元測試：Header、Footer、TestList 元件
@@ -54,7 +54,7 @@ Scaffold（應用基礎架構）目標是建立一個完整的前端應用基礎
 
 ### ⏳ 待做
 
-- [ ] **額外功能** (Sprint 2 候選)
+- [ ] **額外功能** (後續開發候選)
   - [ ] 新增測驗紀錄表單後續開發
   - [ ] 詳細查看頁面
   - [ ] 批量操作 (刪除、匯出)
@@ -96,7 +96,7 @@ export default function Home() {
 - **[Sign In with Google]** → 觸發 `signInWithGoogle()`
 - **[View Tests]** → 導航到 `/test-list`
 
-#### 樣式需求（見 SPRINT_1_UI_SPEC.md）
+#### 樣式需求（見 SCAFFOLD_UI_SPEC.md）
 - 背景：`#f8fafc`
 - 標題色：`#333`
 - 按鈕色：`#ffa725` (橙色)
@@ -120,9 +120,9 @@ export default function Home() {
 - [ ] 響應式卡片視圖 (Mobile/Tablet)
 - [ ] 搜尋框 (by name)
 - [ ] 排序下拉 (by name / score / date)
-- [ ] 編輯按鈕 → 3rd Sprint (pending)
-- [ ] 刪除按鈕 → 3rd Sprint (pending)
-- [ ] 分頁 (假設 > 50 筆資料) → 2nd Sprint
+- [ ] 編輯按鈕 → 待後續迭代
+- [ ] 刪除按鈕 → 待後續迭代
+- [ ] 分頁 (假設 > 50 筆資料) → 後續迭代
 
 #### UI 容納物：
 - 頂部操作欄
@@ -172,10 +172,10 @@ updatedAt   → (隱藏或僅內部使用)
 
 #### 按鈕需求
 - **[View]** → 暫定導航至 `/test-list/[id]`（待實現）
-- **[Edit]** → 暫定開啟編輯對話框（Sprint 2）
-- **[Delete]** → 暫定開啟確認對話框（Sprint 2）
+- **[Edit]** → 暫定開啟編輯對話框（待後續實現）
+- **[Delete]** → 暫定開啟確認對話框（待後續實現）
 
-#### 樣式需求（見 SPRINT_1_UI_SPEC.md）
+#### 樣式需求（見 SCAFFOLD_UI_SPEC.md）
 - 背景：`#f8fafc`
 - 表頭背景：`#f0f0f0`
 - 表格行 Hover：`#f9f9f9`
@@ -224,7 +224,7 @@ updatedAt   → (隱藏或僅內部使用)
 </header>
 ```
 
-##### 樣式需求
+##### 樣式需求 (見 SCAFFOLD_UI_SPEC.md)
 - 背景色：`#aa5486`
 - 文字色：`#fbf4db`
 - 高度：60px
@@ -255,7 +255,7 @@ updatedAt   → (隱藏或僅內部使用)
 </footer>
 ```
 
-##### 樣式需求
+##### 樣式需求 (見 SCAFFOLD_UI_SPEC.md)
 - 背景色：`#aa5486`
 - 文字色：`#fbf4db`
 - 高度：自適應（最小 60px）
@@ -355,7 +355,7 @@ updatedAt   → (隱藏或僅內部使用)
 
 ## 設計檢查清單
 
-參考 [SPRINT_1_UI_SPEC.md](SPRINT_1_UI_SPEC.md) 進行視覺驗證：
+參考 [SCAFFOLD_UI_SPEC.md](SCAFFOLD_UI_SPEC.md) 進行視覺驗證：
 
 - [ ] Header / Footer 背景色 `#aa5486`，文字 `#fbf4db`
 - [ ] 主背景 `#f8fafc`，卡片 `#ffffff`

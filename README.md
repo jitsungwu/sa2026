@@ -167,7 +167,7 @@ npm run mcp:start:with-dir
 ### 添加新元件
 
 1. **在 `src/app/` 或適當位置建立 `MyComponent.jsx`**
-2. **遵循代碼風格**（見 [CONVENTIONS.md](CONVENTIONS.md)）
+2. **遵循代碼風格**（見 [CONVENTIONS.md](.github/CONVENTIONS.md)）
 3. **添加單元測試** `__tests__/MyComponent.test.jsx`
 4. **匯出並使用**：
    ```jsx
@@ -353,7 +353,7 @@ git push origin v1.0.0
 **A**：本專案預設不使用模擬器。若需本地 Firestore 測試，設定 `NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true` 並啟動模擬器。
 
 ### Q：如何在團隊中協作代碼？
-**A**：遵循 [CONVENTIONS.md](CONVENTIONS.md) 的 Commit 規範，定期推送、拉請求 (PR)。Copilot 會根據文檔約定進行代碼審查。
+**A**：遵循 [CONVENTIONS.md](.github/CONVENTIONS.md) 的 Commit 規範，定期推送、拉請求 (PR)。Copilot 會根據文檔約定進行代碼審查。
 
 ### Q：頁面無法加載，如何調試？
 **A**：
