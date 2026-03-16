@@ -2,9 +2,8 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Test List E2E', () => {
   test('displays students from test collection', async ({ page }) => {
-    await page.goto('http://localhost:3000/', { waitUntil: 'domcontentloaded' })
-    // click the link to navigate to /test-list
-    await page.click('a[href="/test-list"]')
+    // navigate directly to the test-list page to avoid depending on homepage links
+    await page.goto('http://localhost:3000/test-list', { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('table')
 
     // Assert at least one known student name
