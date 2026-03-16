@@ -69,46 +69,59 @@
 
 ## 資料模型
 
-# System Architecture & Data Model
+### 1. Firestore 集合結構
 
-## 1. Firestore Schema
+#### 集合：`classes`（班級資訊）
+- `id`: string (文檔 ID: "class-A", "class-B")
+- `name`: string (班級名稱，例如 "甲班", "乙班")
+- `groupCount`: number (預設分組數 10)
 
-### Collection: `classes`
-- `id`: string (Document ID: "class-A", "class-B")
-- `name`: string ("甲班", "乙班")
-- `groupCount`: number (預設 10)
+**用途**：儲存班級基本資訊，用於教師查看和管理
 
-### Collection: `participation_logs`
-- `classId`: string
-- `groupId`: string
-- `points`: number
-- `timestamp`: serverTimestamp
-- `studentId`: string | null (當前 Scaffold 阶段為 null)
+#### 集合：`participation_logs`（學生參與紀錄）
+- `classId`: string (所屬班級 ID)
+- `groupId`: string (所屬小組 ID)
+- `points`: number (累積分數)
+- `timestamp`: serverTimestamp (紀錄時間戳)
+- `studentId`: string | null (當前 Scaffold 階段為 null)
 
-### Collection: `hands_raised`
-- `classId`: string
-- `groupId`: string
-- `timestamp`: serverTimestamp
-- `status`: string ("active" | "resolved")
+**用途**：追蹤學生在課堂中的參與度和積分，支援實時聚合
 
-## 2. Data Flow
-- **Real-time Synchronization:** - Teacher monitor listens to `hands_raised` (status == 'active', orderBy 'timestamp' asc).
-  - Student/Teacher views listen to `participation_logs` to aggregate total points.
-- **State Management:** - Use URL Search Params or `params` for `classId` and `groupId`.
-  - Store `groupId` in `localStorage` once selected by student.
+#### 集合：`hands_raised`（舉手狀態）
+- `classId`: string (所屬班級 ID)
+- `groupId`: string (所屬小組 ID)
+- `timestamp`: serverTimestamp (舉手時間戳)
+- `status`: string ("active" | "resolved" - 待解決或已解決)
 
-**相關操作：**
-- 讀取：使用 `useEmulator` 切換本地或雲端
-- 寫入：單元測試透過 `vi.mock()` 模擬 Firestore
+**用途**：即時跟踪學生舉手狀態，教師可即時監控
 
-### 認證（Firebase Auth）
-- **提供者**：Google OAuth
+### 2. 資料流
+
+#### 即時同步機制
+- **教師監控面板**：監聽 `hands_raised` 集合（`status == 'active'`，按 `timestamp` 升序）
+- **學生/教師檢視**：監聽 `participation_logs` 集合以實時聚合總積分
+
+#### 狀態管理策略
+- 使用 URL Search Params 或路由 `params` 傳遞 `classId` 和 `groupId`
+- 學生首次選擇小組後，將 `groupId` 儲存至 `localStorage`
+
+### 3. 資料庫操作
+
+#### 讀取與寫入
+- **讀取**：使用 `useEmulator` 函式根據環境變數切換本地或雲端 Firestore
+- **寫入**：單元測試透過 `vi.mock()` 模擬 Firestore，避免實際資料庫操作
+
+### 4. 認證（Firebase Auth）
+
+#### 提供者配置
+- **OAuth 提供者**：Google OAuth
 - **匯出函式**：
-  - `signInWithGoogle()`：使用 Google 帳戶登入
-  - `signOutUser()`：登出當前用戶
-  - `auth`：Firebase Auth 實例
+  - `signInWithGoogle()`：啟動 Google 帳戶登入流程
+  - `signOutUser()`：登出當前已認證用戶
+  - `auth`：Firebase Auth 實例，用於檢查當前用戶狀態
 
-### 環境變數
+### 5. 環境變數設定
+
 所有環境變數使用 `NEXT_PUBLIC_*` 前綴以暴露給客戶端：
 ```
 NEXT_PUBLIC_FIREBASE_API_KEY=...
