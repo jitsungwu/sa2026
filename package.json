@@ -19,7 +19,8 @@
 		"start": "next start",
 		"deploy": "firebase deploy --only hosting",
 		"emulators:start": "npx -y firebase-tools@latest emulators:start --only firestore,auth",
-		"emulators:seed": "node scripts/seed-classes.js"
+		"emulators:seed": "node scripts/seed-classes.js",
+		"e2e:with-emulator": "node scripts/run-e2e-with-emulator.cjs"
 	},
 	"dependencies": {
 		"dotenv": "^17.3.1",
