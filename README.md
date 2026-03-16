@@ -350,7 +350,50 @@ git push origin v1.0.0
 **A**：Turbopack 更快（約 490ms 啟動），但仍是 Beta 版。若遇相容性問題，改用 Webpack：`npm run dev:webpack`。
 
 ### Q：我應該何時使用 Firebase 模擬器？
-**A**：本專案預設不使用模擬器。若需本地 Firestore 測試，設定 `NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true` 並啟動模擬器。
+**A**：建議在本地開發或執行 E2E 測試時使用模擬器，避免操作真實專案資料。以下是快速啟用步驟。
+
+1. 安裝 Firebase CLI（若尚未安裝）：
+
+```bash
+npm install -g firebase-tools
+```
+
+或使用 npx（無需全域安裝）：
+
+```bash
+npx -y firebase-tools@latest emulators:start --only firestore,auth
+```
+
+2. 專案內提供方便的 npm 指令：
+
+```bash
+npm run emulators:start   # 啟動 Firestore + Auth 模擬器
+npm run emulators:seed    # (可選) 使用 scripts/seed-classes.js 撰入測試班級資料
+```
+
+3. 設定環境變數讓應用程式自動連到模擬器：
+
+在 `.env.local` 中加入：
+
+```
+NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true
+NEXT_PUBLIC_FIRESTORE_EMULATOR_HOST=localhost
+NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT=8080
+NEXT_PUBLIC_AUTH_EMULATOR_URL=http://localhost:9099
+```
+
+4. 啟動開發伺服器（在另一個終端）：
+
+```bash
+npm run dev
+```
+
+5. 檢查模擬器狀態與 UI：
+
+- Firestore: http://localhost:8080 (client SDK 連線端口)
+- Auth emulator UI（若有）：http://localhost:4000
+
+備註：`src/firebaseClient.js` 已加入自動連線模擬器的邏輯（只要 `NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true` 即會嘗試連線）。
 
 ### Q：如何在團隊中協作代碼？
 **A**：遵循 [CONVENTIONS.md](.github/CONVENTIONS.md) 的 Commit 規範，定期推送、拉請求 (PR)。Copilot 會根據文檔約定進行代碼審查。

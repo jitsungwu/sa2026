@@ -45,10 +45,32 @@ try {
   db = null
 }
 
-// This project does not use Firebase emulators in tests or CI. Unit tests
-// mock `firebase/*` modules instead of relying on emulator connectivity.
-// The `useEmulator` export remains for feature-flagging or local experimentation,
-// but runtime connections to emulators are intentionally omitted here.
+// If enabled via env, automatically connect to local emulators for faster
+// local development. Controlled by `NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true`.
+if (useEmulator && typeof window !== 'undefined') {
+  try {
+    const fsHost = process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_HOST || 'localhost'
+    const fsPort = parseInt(process.env.NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT || '8080', 10)
+    const authUrl = process.env.NEXT_PUBLIC_AUTH_EMULATOR_URL || 'http://localhost:9099'
+
+    if (db) {
+      connectFirestoreEmulator(db, fsHost, fsPort)
+      console.info(`Connected Firestore emulator at ${fsHost}:${fsPort}`)
+    }
+
+    if (auth) {
+      try {
+        connectAuthEmulator(auth, authUrl, { disableWarnings: true })
+        console.info(`Connected Auth emulator at ${authUrl}`)
+      } catch (e) {
+        // connectAuthEmulator may throw on older SDKs; surface the error but don't crash
+        console.warn('connectAuthEmulator failed:', e)
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to connect to Firebase emulators:', e)
+  }
+}
 
 const provider = new GoogleAuthProvider()
 const signInWithGoogle = () => signInWithPopup(auth, provider)
