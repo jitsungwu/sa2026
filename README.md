@@ -395,6 +395,22 @@ npm run dev
 
 備註：`src/firebaseClient.js` 已加入自動連線模擬器的邏輯（只要 `NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true` 即會嘗試連線）。
 
+一鍵執行 E2E 測試（含模擬器）
+
+若你想在本機以「啟動模擬器 → seed 測試資料 → 執行 Playwright 測試 → 關閉模擬器」的流程一次完成，專案提供了方便的 helper 腳本。
+
+```bash
+# 會先啟動 Firestore + Auth 模擬器，seed 測試班級，執行所有 Playwright 測試，最後關閉模擬器
+npm run e2e:with-emulator
+```
+
+實作說明：`npm run e2e:with-emulator` 會執行 `scripts/run-e2e-with-emulator.cjs`。此腳本使用 `npx firebase-tools emulators:start` 來啟動模擬器，等候端口就緒後執行 `npm run emulators:seed`，再執行 `npx playwright test`，最後關閉 emulators。
+
+注意事項：
+- 執行此命令需要能在系統上 spawn 子程序 (`npx`、`node`、`npm`)；Windows 使用者可直接在 PowerShell 執行。 
+- 若你的環境已全域安裝 Firebase CLI，也可以改為手動啟動模擬器再執行 `npx playwright test`。
+- 在 CI 中執行時，確保 runner 可監聽 8080/9099 等端口，且允許背景進程執行。
+
 ### Q：如何在團隊中協作代碼？
 **A**：遵循 [CONVENTIONS.md](.github/CONVENTIONS.md) 的 Commit 規範，定期推送、拉請求 (PR)。Copilot 會根據文檔約定進行代碼審查。
 
