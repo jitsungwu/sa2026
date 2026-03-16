@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test('student raise & cancel hand is reflected in teacher monitor', async ({ browser }) => {
   const teacherContext = await browser.newContext()
   await teacherContext.addInitScript(() => {
-    try { window.localStorage.setItem('activeClass', '2A') } catch (e) { }
+    try { window.localStorage.setItem('activeClass', 'demo') } catch (e) { }
   })
 
   const monitorPage = await teacherContext.newPage()
@@ -13,8 +13,8 @@ test('student raise & cancel hand is reflected in teacher monitor', async ({ bro
   const studentContext = await browser.newContext()
   await studentContext.addInitScript(() => {
     try {
-      window.localStorage.setItem('activeClass', '2A')
-      window.localStorage.setItem('selectedGroup_2A', '1')
+      window.localStorage.setItem('activeClass', 'demo')
+      window.localStorage.setItem('selectedGroup_demo', '1')
       window.localStorage.setItem('participantId', 'e2e_student_1')
     } catch (e) { }
   })

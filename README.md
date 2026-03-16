@@ -80,21 +80,23 @@ npm run dev
 
 改動任何 `.jsx`、`.js`、`.css` 檔案後，頁面會自動刷新（HMR）。
 
-#### 運行單元測試
+#### 運行 E2E 測試
 
-**一次性運行：**
 ```bash
-npm run test
+npm run test:e2e
 ```
 
-**監視模式** (推薦開發時使用)：
+或 使用 Playwright UI：
 ```bash
-npm run test:watch
+npx playwright test --ui
 ```
 
-**運行特定測試檔案：**
+注意：為避免影響真實課程資料，專案的 E2E 與單元測試會預設使用名為 `demo` 的測試課程（由測試檔案在瀏覽器 `localStorage` 中設定 `activeClass=demo`，以及使用 `selectedGroup_demo`）。如果你要在本機運行測試，無需啟動 Firebase 模擬器即可，但請確認測試環境（或伺服器）不會在生產後端自動寫入真實資料。
+
+查看測試報告：
 ```bash
-npm run test -- __tests__/MyComponent.test.jsx
+npx playwright show-report test-results
+```
 ```
 
 #### 運行 E2E 測試

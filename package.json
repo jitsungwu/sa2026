@@ -10,7 +10,7 @@
 		"mcp:start:with-dir": "npx -y firebase-tools@latest mcp --dir .",
 		"test": "vitest --run --reporter=default --reporter=html",
 		"test:watch": "vitest --watch",
-		"test:unit": "vitest",
+		"test:unit": "vitest --run --reporter=default --reporter=html",
 		"test:e2e": "playwright test",
 		"test:all": "npm run test && npm run test:e2e",
 		"playwright:install": "npx playwright install",
