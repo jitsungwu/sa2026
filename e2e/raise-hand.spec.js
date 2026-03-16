@@ -21,7 +21,7 @@ test('student raise & cancel hand is reflected in teacher monitor', async ({ bro
   await studentContext.addInitScript(() => {
     try {
       window.localStorage.setItem('activeClass', '2A')
-      window.localStorage.setItem('selectedGroup', '1')
+      window.localStorage.setItem('selectedGroup_2A', '1')
       window.localStorage.setItem('participantId', 'e2e_student_1')
     } catch (e) {
       // ignore
@@ -48,4 +48,24 @@ test('student raise & cancel hand is reflected in teacher monitor', async ({ bro
 
   await studentContext.close()
   await teacherContext.close()
+})
+
+test('when class inactive student can select class and view scoreboard but cannot raise hand', async ({ page }) => {
+  // ensure no active class in this context
+  await page.context().addInitScript(() => {
+    try { window.localStorage.removeItem('activeClass') } catch (e) {}
+  })
+
+  await page.goto('http://localhost:3000/class/student', { waitUntil: 'domcontentloaded' })
+
+  // Should show selection UI and scoreboard header
+  await expect(page.locator('text=選擇班級')).toBeVisible({ timeout: 5000 })
+  await expect(page.locator('text=選擇組別')).toBeVisible({ timeout: 5000 })
+  // select a group so Scoreboard is displayed
+  await page.locator('select').nth(1).selectOption({ value: '1' })
+  await expect(page.locator('text=即時積分榜')).toBeVisible({ timeout: 5000 })
+
+  // There must NOT be a raise-hand button available in inactive mode
+  const raiseBtn = page.locator('button:has-text("舉手")')
+  await expect(raiseBtn).toHaveCount(0)
 })
