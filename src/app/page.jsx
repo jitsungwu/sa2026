@@ -142,11 +142,12 @@ export default function HomePage() {
                     ))}
                   </select>
 
-                  <div style={{ marginTop: 12 }}>
+                    <div style={{ marginTop: 12 }}>
                     <button className="btn btn-primary" onClick={() => {
                       if (!active) return
                       try {
-                        window.localStorage.setItem('selectedGroup', String(selectedGroup))
+                        const key = `selectedGroup_${active.id || activeClassId}`
+                        window.localStorage.setItem(key, String(selectedGroup))
                       } catch (e) {}
                       window.location.href = `/class/student`
                     }}>學生介面</button>

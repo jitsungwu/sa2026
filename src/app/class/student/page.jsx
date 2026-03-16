@@ -7,7 +7,7 @@ export default function StudentPage() {
   return (
     <div style={{ padding: 20 }}>
       <h1>學生頁 — 班級：{classId || '尚未啟動'}</h1>
-      <StudentClient classId={classId || 'demo'} />
+      <StudentClient classId={classId} />
     </div>
   )
 }
