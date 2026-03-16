@@ -105,21 +105,13 @@ export default function HandsMonitor({ classId }) {
                 {/* 首發專用：允許 0-3 分 */}
                 {idx === 0 && (
                   <button onClick={async () => {
-                    const input = window.prompt('首發給分（0 到 3 分）', '1')
+                    const input = window.prompt('評分（0 到 3 分）', '1')
                     if (input === null) return
                     const v = Number(input)
                     if (isNaN(v) || v < 0 || v > 3) { alert('分數必須介於 0 到 3 之間'); return }
                     await handleAwardWithPoints(h, v)
-                  }}>首發給分</button>
+                  }}>評分</button>
                 )}
-                {/* 一般給分：允許 1-5 分 */}
-                <button onClick={async () => {
-                  const input = window.prompt('給分（1 到 5 分）', '1')
-                  if (input === null) return
-                  const v = Number(input)
-                  if (isNaN(v) || v < 1 || v > 5) { alert('分數必須介於 1 到 5 之間'); return }
-                  await handleAwardWithPoints(h, v)
-                }} style={{ marginLeft: 8 }}>給分</button>
               </div>
             </li>
           ))}
