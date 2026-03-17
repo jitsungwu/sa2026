@@ -4,7 +4,7 @@ import HandsMonitor from '../../../components/HandsMonitor'
 import EndClassButton from '../../../components/EndClassButton'
 import { auth, signInWithGoogle, signOutUser, db } from '../../../firebaseClient'
 import { onAuthStateChanged } from 'firebase/auth'
-import { collection, getDocs, doc, setDoc, serverTimestamp } from '../../../lib/firestoreWrapper'
+import { collection, getDocs, doc, setDoc, serverTimestamp, query, where, onSnapshot } from '../../../lib/firestoreWrapper'
 
 export default function MonitorPage() {
   const [user, setUser] = useState(null)
@@ -19,8 +19,37 @@ export default function MonitorPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const v = window.localStorage.getItem('activeClass')
-    setClassId(v || null)
+    try {
+      const v = window.localStorage.getItem('activeClass')
+      if (v) setClassId(v)
+    } catch (e) {}
+
+    if (!db) return
+
+    // Listen for any class marked active in Firestore so other devices follow
+    const q = query(collection(db, 'classes'), where('active', '==', true))
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        if (snap && !snap.empty) {
+          const first = snap.docs[0]
+          const id = first.id
+          setClassId((prev) => {
+            if (prev !== id) {
+              try { window.localStorage.setItem('activeClass', id) } catch (e) {}
+              return id
+            }
+            return prev
+          })
+        } else {
+          setClassId(null)
+          try { window.localStorage.removeItem('activeClass') } catch (e) {}
+        }
+      },
+      (err) => console.error('classes active snapshot error:', err)
+    )
+
+    return () => unsub()
   }, [])
 
   useEffect(() => {
