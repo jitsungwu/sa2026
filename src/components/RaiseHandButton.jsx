@@ -49,7 +49,7 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
     try {
       await addDoc(
         collection(db, "hands_raised"),
-        { classId, group, ownerId: participantId, timestamp: serverTimestamp(), active: true }
+        { classId, group, ownerId: participantId, timestamp: new Date(), active: true }
       )
       if (onRaised) onRaised()
     } catch (err) {
@@ -60,10 +60,15 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   }
 
   const handleCancel = async () => {
-    if (!activeDocId || loading) return
+    if (loading) return
     setLoading(true)
     try {
-      await updateDoc(doc(db, 'hands_raised', activeDocId), { active: false, cancelled: true })
+      // Re-query active hands for this participant to ensure we update the correct documents
+      const colRef = collection(db, 'hands_raised')
+      const q = query(colRef, where('classId', '==', classId), where('ownerId', '==', participantId), where('active', '==', true))
+      const snap = await getDocs(q)
+      const updates = snap.docs.map(d => updateDoc(doc(db, 'hands_raised', d.id), { active: false, cancelled: true }))
+      await Promise.all(updates)
       // local state will update via onSnapshot listener
     } catch (err) {
       console.error('取消舉手錯誤：', err)

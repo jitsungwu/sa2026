@@ -1,1 +1,30 @@
-{"hosting": {"public": "dist","ignore": ["firebase.json","**/*.*","**/node_modules/**"]},"projects": {"default": "fju-im-sa"},"firestore": {"database": "(default)","location": "nam5","rules": "firestore.rules","indexes": "firestore.indexes.json"}}
+{
+	"hosting": {
+		"public": "dist",
+		"ignore": ["firebase.json", "**/*.*", "**/node_modules/**"]
+	},
+	"projects": {
+		"default": "fju-im-sa"
+	},
+	"firestore": {
+		"database": "(default)",
+		"location": "nam5",
+		"rules": "firestore.rules",
+		"indexes": "firestore.indexes.json"
+	},
+	"emulators": {
+		"auth": {
+			"host": "127.0.0.1",
+			"port": 9099
+		},
+		"firestore": {
+			"host": "127.0.0.1",
+			"port": 8080
+		},
+		"ui": {
+			"enabled": true,
+			"host": "127.0.0.1",
+			"port": 4000
+		}
+	}
+}
