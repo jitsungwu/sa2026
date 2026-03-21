@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react"
 import { db } from "../firebaseClient"
 import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDocs } from "../lib/firestoreWrapper"
 
-export default function HandsMonitor({ classId }) {
+export default function HandsMonitor({ classId, isOwner }) {
   const [hands, setHands] = useState([])
 
   useEffect(() => {
@@ -12,7 +12,13 @@ export default function HandsMonitor({ classId }) {
     const q = query(col, where("classId", "==", classId), where("active", "==", true), orderBy("timestamp", "asc"))
     const unsub = onSnapshot(
       q,
-      (snapshot) => setHands(snapshot.docs.map(d => ({ id: d.id, ...d.data() }))),
+      (snapshot) => {
+        const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+        const byOwner = {}
+        all.forEach(h => { if (h && h.ownerId) byOwner[h.ownerId] = h })
+        const unique = Object.values(byOwner)
+        setHands(unique)
+      },
       (err) => console.error('Hands monitor snapshot error:', err)
     )
     return () => unsub()
@@ -24,6 +30,7 @@ export default function HandsMonitor({ classId }) {
   }
 
   const handleResetAll = async () => {
+    if (!isOwner) { alert('僅老師可重置舉手紀錄'); return }
     try {
       const colRef = collection(db, 'hands_raised')
       const q = query(colRef, where('classId', '==', classId), where('active', '==', true))
@@ -36,6 +43,7 @@ export default function HandsMonitor({ classId }) {
   }
 
   const handleAwardWithPoints = async (hand, points) => {
+    if (!isOwner) { alert('僅老師可給分'); return }
     try {
       // Create a participation log that references the original hand document
       await addDoc(collection(db, 'participation_logs'), {
@@ -52,6 +60,7 @@ export default function HandsMonitor({ classId }) {
   }
 
   const awardArbitraryGroup = async (group, points) => {
+    if (!isOwner) { alert('僅老師可給分'); return }
     try {
       if (!group) {
         alert('請輸入組別編號')
@@ -72,47 +81,51 @@ export default function HandsMonitor({ classId }) {
   return (
     <div style={{ padding: 20 }}>
       <h2>即時舉手名單</h2>
-      <div style={{ marginBottom: 12 }}>
-        <button onClick={handleResetAll}>全部重置</button>
-      </div>
+      {isOwner && (
+        <>
+          <div style={{ marginBottom: 12 }}>
+            <button onClick={handleResetAll}>全部重置</button>
+          </div>
 
-      <div style={{ marginBottom: 12, padding: 8, border: '1px solid #ddd' }}>
-        <strong>指定組別給分（老師）</strong>
-        <div style={{ marginTop: 8 }}>
-          <label style={{ marginRight: 8 }}>組別：</label>
-          <input id="arb-group-input" type="text" style={{ width: 80, marginRight: 12 }} />
-          <label style={{ marginRight: 8 }}>分數 (1-5)：</label>
-          <input id="arb-points-input" type="number" min={1} max={5} defaultValue={1} style={{ width: 60, marginRight: 12 }} />
-          <button onClick={() => {
-            const g = document.getElementById('arb-group-input').value
-            const p = Number(document.getElementById('arb-points-input').value || 1)
-            if (isNaN(p) || p < 1 || p > 5) {
-              alert('分數必須介於 1 到 5 之間')
-              return
-            }
-            awardArbitraryGroup(g, p)
-          }}>給指定組別分數</button>
-        </div>
-      </div>
+          <div style={{ marginBottom: 12, padding: 8, border: '1px solid #ddd' }}>
+            <strong>指定組別給分（老師）</strong>
+            <div style={{ marginTop: 8 }}>
+              <label style={{ marginRight: 8 }}>組別：</label>
+              <input id="arb-group-input" type="text" style={{ width: 80, marginRight: 12 }} />
+              <label style={{ marginRight: 8 }}>分數 (1-5)：</label>
+              <input id="arb-points-input" type="number" min={1} max={5} defaultValue={1} style={{ width: 60, marginRight: 12 }} />
+              <button onClick={() => {
+                const g = document.getElementById('arb-group-input').value
+                const p = Number(document.getElementById('arb-points-input').value || 1)
+                if (isNaN(p) || p < 1 || p > 5) {
+                  alert('分數必須介於 1 到 5 之間')
+                  return
+                }
+                awardArbitraryGroup(g, p)
+              }}>給指定組別分數</button>
+            </div>
+          </div>
+        </>
+      )}
       {hands.length === 0 ? (
         <div>目前沒有舉手紀錄</div>
       ) : (
         <ol>
           {hands.map((h, idx) => (
-            <li key={h.id} style={{ marginBottom: 8 }}>
+            <li key={h.id} data-owner={h.ownerId} style={{ marginBottom: 8 }}>
               <strong>組別：</strong> {h.group} — <strong>時間：</strong> {h.timestamp?.toDate ? h.timestamp.toDate().toLocaleString() : String(h.timestamp)}
-              <div style={{ display: 'inline-block', marginLeft: 12 }}>
-                {/* 首發專用：允許 0-3 分 */}
-                {idx === 0 && (
-                  <button onClick={async () => {
-                    const input = window.prompt('評分（0 到 3 分）', '1')
-                    if (input === null) return
-                    const v = Number(input)
-                    if (isNaN(v) || v < 0 || v > 3) { alert('分數必須介於 0 到 3 之間'); return }
-                    await handleAwardWithPoints(h, v)
-                  }}>評分</button>
-                )}
-              </div>
+                <div style={{ display: 'inline-block', marginLeft: 12 }}>
+                  {/* 首發專用：允許 0-3 分（只有老師顯示操作） */}
+                  {idx === 0 && isOwner && (
+                    <button onClick={async () => {
+                      const input = window.prompt('評分（0 到 3 分）', '1')
+                      if (input === null) return
+                      const v = Number(input)
+                      if (isNaN(v) || v < 0 || v > 3) { alert('分數必須介於 0 到 3 之間'); return }
+                      await handleAwardWithPoints(h, v)
+                    }}>評分</button>
+                  )}
+                </div>
             </li>
           ))}
         </ol>

@@ -4,9 +4,9 @@ import { useRouter } from 'next/navigation'
 import RaiseHandButton from "./RaiseHandButton"
 import Scoreboard from "./Scoreboard"
 import { db } from '../firebaseClient'
-import { collection, getDocs } from '../lib/firestoreWrapper'
+import { collection, getDocs, doc, getDoc, query, where, onSnapshot } from '../lib/firestoreWrapper'
 
-export default function StudentClient({ classId }) {
+export default function StudentClient({ classId, initialGroup }) {
   const router = useRouter()
   const [group, setGroup] = useState(null)
   const [locked, setLocked] = useState(false)
@@ -16,16 +16,27 @@ export default function StudentClient({ classId }) {
 
   useEffect(() => {
     if (classId) {
-      // active class flow: look for per-class selectedGroup
-      const key = `selectedGroup_${classId}`
-      const stored = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null
-      if (stored) {
-        setGroup(stored)
-        setLocked(true)
-      } else {
+      ;(async () => {
+        try {
+          // prefer initialGroup from query param if provided
+          if (initialGroup) {
+            setGroup(initialGroup)
+            setLocked(true)
+            return
+          }
+          if (!db) { router.push('/'); return }
+          const d = await getDoc(doc(db, 'classes', classId))
+          if (d && d.exists && d.data() && d.data().currentGroup) {
+            setGroup(d.data().currentGroup)
+            setLocked(true)
+            return
+          }
+        } catch (e) {
+          console.error('讀取班級目前組別失敗', e)
+        }
         // no group selected -> redirect back to homepage for selection
         router.push('/')
-      }
+      })()
       return
     }
 
@@ -83,8 +94,6 @@ export default function StudentClient({ classId }) {
           <RaiseHandButton classId={classId} group={group} />
           {locked && (
             <button className="btn" style={{ marginLeft: 12 }} onClick={() => {
-              const key = `selectedGroup_${classId}`
-              window.localStorage.removeItem(key)
               router.push('/')
             }}>退出並重新選擇</button>
           )}
@@ -131,18 +140,25 @@ export default function StudentClient({ classId }) {
       )}
 
       <div style={{ marginTop: 12 }}>
-        <button className="btn" onClick={() => {
-          // refresh to check if a class got activated elsewhere
-          const active = window.localStorage.getItem('activeClass')
-          if (active) {
-            // navigate to student page for active class
-            const key = `selectedGroup_${active}`
-            if (group) {
-              try { window.localStorage.setItem(key, String(group)) } catch (e) {}
+        <button className="btn" onClick={async () => {
+          // refresh to check if a class got activated elsewhere (use Firestore)
+          if (!db) { window.alert('目前尚未啟動任何班級'); return }
+          try {
+            const q = query(collection(db, 'classes'), where('active', '==', true))
+            const snap = await getDocs(q)
+            if (snap && !snap.empty) {
+              // if user selected a group, pass it via query param
+              if (group) {
+                window.location.href = `/class/student?group=${group}`
+              } else {
+                window.location.href = `/class/student`
+              }
+            } else {
+              window.alert('目前尚未啟動任何班級')
             }
-            window.location.reload()
-          } else {
-            window.alert('目前尚未啟動任何班級')
+          } catch (e) {
+            console.error('檢查是否啟動錯誤', e)
+            window.alert('檢查啟動狀態時發生錯誤')
           }
         }}>檢查是否啟動</button>
       </div>

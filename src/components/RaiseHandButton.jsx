@@ -1,7 +1,7 @@
 "use client"
 import React, { useEffect, useState } from "react"
 import { db } from "../firebaseClient"
-import { addDoc, collection, serverTimestamp, query, where, onSnapshot, updateDoc, doc } from "../lib/firestoreWrapper"
+import { addDoc, collection, serverTimestamp, query, where, onSnapshot, updateDoc, doc, getDocs } from "../lib/firestoreWrapper"
 
 export default function RaiseHandButton({ classId, group, onRaised }) {
   const [loading, setLoading] = useState(false)
@@ -14,13 +14,12 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
     let id = null
     try {
       const params = new URLSearchParams(window.location.search)
-      id = params.get('participantId') || localStorage.getItem('participantId')
+      id = params.get('participantId') || null
     } catch (e) {
       id = null
     }
     if (!id) {
       id = `p_${Date.now()}_${Math.floor(Math.random()*10000)}`
-      try { localStorage.setItem('participantId', id) } catch (e) {}
     }
     setParticipantId(id)
   }, [])

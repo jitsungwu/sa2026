@@ -1,24 +1,16 @@
 import { db, useEmulator } from '../firebaseClient'
-import { collection, addDoc } from '../lib/firestoreWrapper'
+import { collection, addDoc, setDoc, doc } from '../lib/firestoreWrapper'
 
 export const TEST_CLASS_ID = 'test-local-1'
 
 export async function createTestClass({ id = TEST_CLASS_ID, name = '測試班級', groups = [1] } = {}) {
-  if (typeof window !== 'undefined') {
+  // Create test class in Firestore when available (emulator or real)
+  if (db) {
     try {
-      window.localStorage.setItem('activeClass', id)
-      window.localStorage.setItem('selectedGroup', String(groups[0] || 1))
-    } catch (e) {
-      // ignore localStorage errors
-    }
-  }
-
-  if (useEmulator && db) {
-    try {
-      const ref = await addDoc(collection(db, 'classes'), { name, groups, test: true })
+      const ref = await addDoc(collection(db, 'classes'), { name, groups, test: true, active: true, currentGroup: groups[0] || 1 })
       return { id: ref.id, createdInFirestore: true }
     } catch (err) {
-      console.error('無法在 emulator 建立測試班級', err)
+      console.error('無法在 Firestore 建立測試班級', err)
       return { id, createdInFirestore: false }
     }
   }
@@ -27,17 +19,7 @@ export async function createTestClass({ id = TEST_CLASS_ID, name = '測試班級
 }
 
 export function clearTestClass({ id = TEST_CLASS_ID } = {}) {
-  if (typeof window !== 'undefined') {
-    try {
-      const current = window.localStorage.getItem('activeClass')
-      if (!id || current === id) {
-        window.localStorage.removeItem('activeClass')
-        window.localStorage.removeItem('selectedGroup')
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
+  // For emulator-based tests, the test harness should delete the Firestore doc if needed.
 }
 
 export default { TEST_CLASS_ID, createTestClass, clearTestClass }

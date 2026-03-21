@@ -2,55 +2,97 @@
 import React, { useEffect, useState } from 'react'
 import HandsMonitor from '../../../components/HandsMonitor'
 import EndClassButton from '../../../components/EndClassButton'
-import { auth, signInWithGoogle, signOutUser, db } from '../../../firebaseClient'
+import { auth, signInWithEmail, createAccountWithEmail, signOutUser, db } from '../../../firebaseClient'
+import SignInForm from '../../../components/SignInForm'
 import { onAuthStateChanged } from 'firebase/auth'
 import { collection, getDocs, doc, setDoc, serverTimestamp, query, where, onSnapshot } from '../../../lib/firestoreWrapper'
 
 export default function MonitorPage() {
+  const ALLOWED_TEACHER_EMAIL = process.env.NEXT_PUBLIC_ALLOWED_TEACHER_EMAIL || 'benwu@im.fju.edu.tw'
   const [user, setUser] = useState(null)
+  const [authChecked, setAuthChecked] = useState(false)
   const [classId, setClassId] = useState(null)
   const [classes, setClasses] = useState([])
   const [selected, setSelected] = useState(null)
+  const [classOwner, setClassOwner] = useState(null)
+  const [showSignIn, setShowSignIn] = useState(false)
+  const [isE2ETest, setIsE2ETest] = useState(() => {
+    try {
+      if (typeof window === 'undefined') return false
+      return window.localStorage.getItem('E2E_DISABLE_AUTH') === '1'
+    } catch (e) { return false }
+  })
 
   useEffect(() => {
-    const un = onAuthStateChanged(auth, (u) => setUser(u))
+    const un = onAuthStateChanged(auth, (u) => {
+      setUser(u)
+      setAuthChecked(true)
+    })
     return () => un()
   }, [])
 
+  
+
+  // If logged in but not the allowed UID, sign out automatically so user can switch accounts
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      const v = window.localStorage.getItem('activeClass')
-      if (v) setClassId(v)
-    } catch (e) {}
+    if (isE2ETest) return // skip auto sign-out in E2E no-auth mode
+    if (!authChecked || !user) return
 
+    const curUid = user.uid
+    const curEmail = user.email || null
+    // If a class owner is recorded, allow either the configured teacher email or the owner UID to remain signed in.
+    if (classOwner) {
+      if (curEmail !== ALLOWED_TEACHER_EMAIL && curUid !== classOwner) {
+        try {
+          alert('偵測到非授權老師帳號（目前 UID: ' + curUid + ', 目前 email: ' + curEmail + ', 授權 email: ' + ALLOWED_TEACHER_EMAIL + ', 班級擁有者: ' + (classOwner || '無') + '），將自動登出以便切換帳號。')
+        } catch (e) {}
+        signOutUser().finally(() => {
+          try { window.location.href = '/' } catch (e) {}
+        })
+      }
+    } else {
+      // No owner recorded: fall back to configured allowed email only
+      if (curEmail !== ALLOWED_TEACHER_EMAIL) {
+        try {
+          alert('偵測到非授權老師帳號（目前 UID: ' + curUid + ', 目前 email: ' + curEmail + ', 授權 email: ' + ALLOWED_TEACHER_EMAIL + '），將自動登出以便切換帳號。')
+        } catch (e) {}
+        signOutUser().finally(() => {
+          try { window.location.href = '/' } catch (e) {}
+        })
+      }
+    }
+  }, [authChecked, user, isE2ETest, classOwner])
+
+  useEffect(() => {
     if (!db) return
-
-    // Listen for any class marked active in Firestore so other devices follow
     const q = query(collection(db, 'classes'), where('active', '==', true))
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        if (snap && !snap.empty) {
-          const first = snap.docs[0]
-          const id = first.id
-          setClassId((prev) => {
-            if (prev !== id) {
-              try { window.localStorage.setItem('activeClass', id) } catch (e) {}
-              return id
-            }
-            return prev
-          })
-        } else {
-          setClassId(null)
-          try { window.localStorage.removeItem('activeClass') } catch (e) {}
-        }
-      },
-      (err) => console.error('classes active snapshot error:', err)
-    )
+    const unsub = onSnapshot(q, (snap) => {
+      if (snap && !snap.empty) {
+        const first = snap.docs[0]
+        setClassId(first.id)
+        try { setClassOwner(first.data().activatedBy || null) } catch (e) { setClassOwner(null) }
+      } else {
+        setClassId(null)
+        setClassOwner(null)
+      }
+    }, (err) => console.error('classes active snapshot error:', err))
 
     return () => unsub()
-  }, [])
+  }, [db])
+
+  useEffect(() => {
+    if (!db || !classId) { setClassOwner(null); return }
+    const ref = doc(db, 'classes', classId)
+    const unsub = onSnapshot(ref, (snap) => {
+      if (snap && snap.exists && snap.data()) {
+        setClassOwner(snap.data().activatedBy || null)
+      } else {
+        setClassOwner(null)
+      }
+    }, (err) => console.error('class doc snapshot error:', err))
+
+    return () => unsub()
+  }, [classId])
 
   useEffect(() => {
     const fallback = [
@@ -84,21 +126,55 @@ export default function MonitorPage() {
     load()
   }, [])
 
+  if (!authChecked) {
+    return (
+      <div style={{ padding: 20 }}>
+        <div>檢查登入狀態中...</div>
+      </div>
+    )
+  }
+
+  if (!user && !isE2ETest) {
+    return (
+      <div style={{ padding: 20 }}>
+        <div style={{ padding: 20, border: '1px solid #eee', borderRadius: 6 }}>
+          <h2>需要登入</h2>
+          <p>此頁為老師管理介面，請先使用帳號登入以進行管理動作。</p>
+          <div style={{ marginTop: 12 }}>
+            <button className="btn btn-primary" onClick={() => setShowSignIn(true)} style={{ marginRight: 8 }}>以 Email 登入</button>
+            <a className="btn" href="/" style={{ marginLeft: 8 }}>返回首頁</a>
+          </div>
+          {showSignIn ? <div style={{ marginTop: 12 }}><SignInForm onSuccess={() => setShowSignIn(false)} onClose={() => setShowSignIn(false)} /></div> : null}
+        </div>
+      </div>
+    )
+  }
+  
+
   return (
     <div style={{ padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h1>監控頁 — 班級：{classId || '尚未啟動'}</h1>
         <div>
           <a className="btn" href="/class/student" style={{ marginRight: 8 }}>切換到學生頁</a>
-          {user ? (
-            <>
-              <span style={{ marginRight: 8 }}>已登入：{user.displayName || user.email}</span>
-              <button className="btn" onClick={() => signOutUser()} style={{ marginRight: 8 }}>登出</button>
-            </>
-          ) : (
-            <button className="btn" onClick={() => signInWithGoogle()} style={{ marginRight: 8 }}>以 Google 登入</button>
-          )}
-          <EndClassButton classId={classId} />
+          <span style={{ marginRight: 8 }}>已登入：{user ? (user.displayName || user.email) : '（未登入）'}</span>
+          <button className="btn" onClick={() => signOutUser()} style={{ marginRight: 8 }}>登出</button>
+          <EndClassButton classId={classId} classOwner={classOwner} currentUser={user} />
+        </div>
+      </div>
+
+      <div style={{ marginTop: 8, marginBottom: 12 }}>
+        <div style={{ color: '#333' }}>
+          <strong>登入者帳號：</strong>
+          <span style={{ marginLeft: 6 }}>
+            {user ? (user.displayName || user.email) : '（未登入）'}
+            {user && user.email ? (' (' + user.email + ')') : null}
+            {user && user.uid ? <span style={{ color: '#888', marginLeft: 8 }}>UID: {user.uid}</span> : null}
+            <div style={{ marginTop: 6, color: '#666' }}>
+              <strong>班級擁有者 UID：</strong> {classOwner || '（無）'}
+              <span style={{ marginLeft: 12 }}><strong>你是擁有者：</strong> {user && classOwner && user.uid === classOwner ? '是' : (classOwner ? '否' : '無紀錄')}</span>
+            </div>
+          </span>
         </div>
       </div>
 
@@ -116,7 +192,6 @@ export default function MonitorPage() {
             style={{ marginLeft: 12 }}
             onClick={async () => {
               if (!selected) return
-              try { window.localStorage.setItem('activeClass', selected) } catch (e) {}
               setClassId(selected)
               if (db) {
                 try {
@@ -132,11 +207,11 @@ export default function MonitorPage() {
               }
             }}
           >啟動班級</button>
-          <span style={{ marginLeft: 8, color: '#666' }}>{user ? '登入後可管理與結束課程' : '未登入：仍可啟動班級，但登入可取得管理權限'}</span>
+          <span style={{ marginLeft: 8, color: '#666' }}>{user ? '登入後可管理與結束課程' : '請登入以啟動並管理班級'}</span>
         </div>
       )}
 
-      <HandsMonitor classId={classId} />
+      <HandsMonitor classId={classId} isOwner={user && classOwner && user.uid === classOwner} />
     </div>
   )
 }
