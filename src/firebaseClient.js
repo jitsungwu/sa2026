@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app'
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, connectAuthEmulator } from 'firebase/auth'
+import { getAuth, connectAuthEmulator, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -72,8 +72,9 @@ if (useEmulator && typeof window !== 'undefined') {
   }
 }
 
-const provider = new GoogleAuthProvider()
-const signInWithGoogle = () => signInWithPopup(auth, provider)
+const signInWithEmail = (email, password) => signInWithEmailAndPassword(auth, email, password)
+
+const createAccountWithEmail = (email, password) => createUserWithEmailAndPassword(auth, email, password)
 
 const signOutUser = async () => {
   try {
@@ -81,13 +82,12 @@ const signOutUser = async () => {
   } finally {
     if (typeof window !== 'undefined') {
       try {
-        window.localStorage.removeItem('activeClass')
-        window.localStorage.removeItem('selectedGroup')
+        // previously removed localStorage keys here; storage is now kept in Firestore
+        // keep signOutUser simple: no client-side storage mutations
       } catch (e) {
         // ignore localStorage errors
       }
     }
   }
 }
-
-export { auth, db, signInWithGoogle, signOutUser, useEmulator }
+export { auth, db, signInWithEmail, createAccountWithEmail, signOutUser, useEmulator }
