@@ -1,9 +1,13 @@
 import { test, expect } from '@playwright/test'
+import dotenv from 'dotenv'
+
+dotenv.config({ path: '.env.local' })
 
 test.describe('Test List E2E', () => {
   test('displays students from test collection', async ({ page }) => {
+    const base = process.env.BASE_URL || 'http://localhost:3000'
     // navigate directly to the test-list page to avoid depending on homepage links
-    await page.goto('http://localhost:3000/test-list', { waitUntil: 'domcontentloaded' })
+    await page.goto(`${base}/test-list`, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('table')
 
     // Assert at least one known student name

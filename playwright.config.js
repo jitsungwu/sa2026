@@ -2,6 +2,9 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e',
+  // Run tests sequentially to respect stateful dependencies between tests
+  workers: 1,
+  fullyParallel: false,
   timeout: 30 * 1000,
   use: {
     headless: true,
