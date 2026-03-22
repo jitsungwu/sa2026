@@ -9,7 +9,7 @@
 ## 2. User Stories & Acceptance Criteria (AC)
 
 ### Epic 1: Teacher Control
-- **US 1.1 Monitor:** 教師在 `/class/[classId]/monitor` 看到即時舉手名單並能啟動/停用該班監控。
+- **US 1.1 Monitor:** 教師在 `/class/monitor` 看到即時舉手名單並能啟動/停用指定測試班級的監控。
   - **AC:** 舉手列表依 `timestamp` 升序顯示，並可以針對個別記錄執行標記（例如給分或移除）。
   - **AC:** 教師可按鈕執行「重置班級」，清空 `hands_raised` 並保留或匯出 `participation_logs`（視實作而定）。
 - **US 1.2 Teacher Give Points:** 教師可對單筆舉手記錄或指定組別給分。
@@ -21,7 +21,7 @@
   - **AC 1.2.4 (即時反映):** 新增 `participation_logs` 後 `Scoreboard` 應即時更新該組分數；教師介面上該手勢項目立即被標記為處理（或從列表示消）。
 
 ### Epic 2: Student Interaction
-- **US 2.1 Raise Hand:** 學生在 `/class/[classId]/student?group=N`（或透過首頁選擇班級/組別）按鈕舉手。
+- **US 2.1 Raise Hand:** 學生在 `/class/student?group=N`（或透過首頁選擇班級/組別）按鈕舉手（測試使用 `TEST_CLASS_ID` 或 query 參數指定班級）。
   - **AC:** 第一次舉手會在 `hands_raised` 新增一筆（含 `classId`, `group`, `timestamp`, `displayName`），若已舉手按鈕為 disabled。
   - **AC:** 同步產生 `participation_logs`（或在教師給分時新增，視設計決定）。
 
@@ -30,8 +30,8 @@
 
 ## 3. Routing Map (已實作/預期路由)
 - `/`：首頁 — 選擇班級與暱稱/組別。
-- `/class/[classId]/student?group=N`：學生端（舉手按鈕、個人狀態、分數檢視）。
-- `/class/[classId]/monitor`：教師監控頁（舉手列表、給分、重置）。
+/class/monitor`：教師監控頁（舉手列表、給分、重置），可由頁面內選單選擇或以 `TEST_CLASS_ID` 指定要啟動的班級。
+/class/student?group=N`：學生端（舉手按鈕、個人狀態、分數檢視），可用 query 參數 `group` 與 `participantId` 進行測試。
 
 ## 4. Data Model / Firestore Collections (implementation notes)
 - Top-level collections used by the app (not nested under classes):
