@@ -1,26 +1,26 @@
-# E2E Tests Status
+# E2E 測試狀態
 
-## ✅ All Tests Completed
+## ✅ 全部測試完成
 
-All 7 e2e test specs are now passing (7 passed, 0 skipped, 0 failed, Exit Code: 0).
+所有 7 個 e2e 測試規格現已通過（7 個通過、0 個略過、0 個失敗、結束代碼：0）。
 
-### Fixes Applied
+### 已套用的修正
 
-1. **raise-hand-inactive.spec.js (01)**: 
-   - Implemented stop-class setup: Teacher signs in and clicks "結束上課" to deactivate the class
-   - Added polling for inactive UI appearance with tolerance for transient states
-   - Test now validates student can view scoreboard but cannot raise hand when class is inactive
+1. **01 - 課程未啟動時學生舉手測試 (01-raise-hand-inactive.spec.js)**：
+   - 實裝停止課程設置：教師登入後點擊「結束上課」按鈕以停用課程
+   - 新增未啟動 UI 出現的輪詢機制，並容許過渡狀態
+   - 測試現已驗證學生在課程未啟動時可檢視積分榜但無法舉手
 
-2. **raise-hand-active.spec.js (03)** & **teacher-give-points.spec.js (04)**:
-   - Removed localStorage dependency (app no longer uses it)
-   - Added proper Firestore propagation wait: Wait for StudentPage header to show active classId before checking for RaiseHandButton
-   - Both specs now use real UI flows and handle Firestore snapshot timing correctly
+2. **03 課程已啟動時舉手測試 (03-raise-hand-active.spec.js)** 及 **04 教師給分測試 (04-teacher-give-points.spec.js)**：
+   - 移除 localStorage 相依性（應用程式已不再使用）
+   - 新增適當的 Firestore 傳播等待邏輯：先等待學生頁面標題顯示已啟動的班級代碼，再檢查舉手按鈕
+   - 兩個測試規格現已使用實際 UI 流程，並正確處理 Firestore 快照時序
 
-3. **Other specs (02, 05, 06, 07)**:
-   - Already passing with robust conditional logic for class state management
+3. **其他測試規格 (02、05、06、07)**：
+   - 具有完善的條件邏輯，已能穩定通過並管理課程狀態
 
-### Test Results
+### 測試結果
 
-Run `npm run test:e2e` or `npx playwright test e2e/ --workers=1` to verify all tests pass.
+執行 `npm run test:e2e` 或 `npx playwright test e2e/ --workers=1` 以驗證所有測試通過。
 
-Last verified: 2026-03-22 — 7 passed (34.7s) ✓
+最後驗證時間：2026-03-22 — 7 個通過 (34.7秒) ✓
