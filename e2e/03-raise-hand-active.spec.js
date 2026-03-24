@@ -46,6 +46,17 @@ test('student raise & cancel hand is reflected in teacher monitor', async ({ bro
       }
     }
     if (!clicked) throw new Error('Failed to click activate button after retries')
+    
+    // Wait for class to become active (h1 should change from '尚未啟動' to actual class ID)
+    await monitorPage.waitForSelector('h1', { timeout: 15000 })
+    const header = await monitorPage.textContent('h1')
+    if (header && header.includes('尚未啟動')) {
+      await monitorPage.waitForTimeout(2000)
+      const header2 = await monitorPage.textContent('h1')
+      if (header2 && header2.includes('尚未啟動')) {
+        throw new Error(`Class activation failed: header still shows "${header2}"`)
+      }
+    }
   }
 
   // Ensure HandsMonitor is visible (active class propagated)
