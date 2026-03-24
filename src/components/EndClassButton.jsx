@@ -2,7 +2,7 @@
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { db } from '../firebaseClient'
-import { doc, setDoc, serverTimestamp } from '../lib/firestoreWrapper'
+import { doc, setDoc, serverTimestamp, collection, query, where, getDocs, updateDoc } from '../lib/firestoreWrapper'
 
 export default function EndClassButton({ classId, classOwner, currentUser }) {
   const router = useRouter()
@@ -29,6 +29,17 @@ export default function EndClassButton({ classId, classOwner, currentUser }) {
 
     try {
       if (db && classId) {
+        try {
+          // 清除舉手紀錄
+          const colRef = collection(db, 'hands_raised')
+          const q = query(colRef, where('classId', '==', classId), where('active', '==', true))
+          const snap = await getDocs(q)
+          const updates = snap.docs.map(d => updateDoc(doc(db, 'hands_raised', d.id), { active: false, resolved: true }))
+          await Promise.all(updates)
+        } catch (err) {
+          console.error('無法清除舉手紀錄', err)
+        }
+
         try {
           await setDoc(doc(db, 'classes', classId), { active: false, endedAt: serverTimestamp() }, { merge: true })
         } catch (err) {

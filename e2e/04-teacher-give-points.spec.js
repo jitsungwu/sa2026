@@ -28,6 +28,7 @@ test('teacher awards points for a raised hand and scoreboard updates', async ({ 
   }
   // If class not active yet, activate the TEST_CLASS via the monitor UI
   const TEST_CLASS = process.env.TEST_CLASS_ID || 'demo'
+  await monitorPage.waitForTimeout(1000) // Wait for page to fully load
   const activateBtn = await monitorPage.$('button:has-text("啟動班級")')
   if (activateBtn) {
     const sel = await monitorPage.$('select')
@@ -36,6 +37,7 @@ test('teacher awards points for a raised hand and scoreboard updates', async ({ 
       if (opt) await monitorPage.selectOption('select', TEST_CLASS)
       else await monitorPage.selectOption('select', { index: 0 })
     }
+    await monitorPage.waitForTimeout(500)
     const activateLocator = monitorPage.locator('button:has-text("啟動班級")')
     let clicked = false
     for (let i = 0; i < 5; i++) {
@@ -49,15 +51,16 @@ test('teacher awards points for a raised hand and scoreboard updates', async ({ 
     }
     if (!clicked) throw new Error('Failed to click activate button after retries')
     
-    // Wait for class to become active (h1 should change from '尚未啟動' to actual class ID)
-    await monitorPage.waitForSelector('h1', { timeout: 15000 })
-    const header = await monitorPage.textContent('h1')
-    if (header && header.includes('尚未啟動')) {
-      await monitorPage.waitForTimeout(2000)
-      const header2 = await monitorPage.textContent('h1')
-      if (header2 && header2.includes('尚未啟動')) {
-        throw new Error(`Class activation failed: header still shows "${header2}"`)
-      }
+    // Wait longer for Firestore propagation and class activation
+    for (let i = 0; i < 10; i++) {
+      const header = await monitorPage.textContent('h1')
+      if (header && !header.includes('尚未啟動')) break
+      await monitorPage.waitForTimeout(1000)
+    }
+
+    const header2 = await monitorPage.textContent('h1')
+    if (header2 && header2.includes('尚未啟動')) {
+      throw new Error(`Class activation failed: header still shows "${header2}"`)
     }
   }
   await monitorPage.waitForSelector('text=即時舉手名單', { timeout: 15000 })
