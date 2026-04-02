@@ -111,11 +111,45 @@ test('teacher awards points for a raised hand and scoreboard updates', async ({ 
   await arbGroupInput.fill('1')
   await arbPointsInput.fill('1')
   
+  // Read current score for group 1 on student page (treat missing as 0)
+  async function readGroupScore(page, group) {
+    const locator = page.locator(`li:has-text("組別 ${group}:")`)
+    const count = await locator.count()
+    if (count === 0) return 0
+    const text = await locator.first().innerText()
+    const m = text.match(/(\d+)\s*分/) || []
+    return m[1] ? parseInt(m[1], 10) : 0
+  }
+
+  const beforeScore = await readGroupScore(studentPage, 1)
+
   // Click the award button and verify the action completes without error
   try {
     await arbBtn.click({ timeout: 5000 })
   } catch (err) {
     throw new Error('Failed to click award button: ' + err.message)
+  }
+
+  // Wait for scoreboard to update to beforeScore + 1
+  const expected = beforeScore + 1
+  const expectedRegex = new RegExp(`組別 1:\\s*${expected} 分`)
+  let seen = false
+  const maxWait = 30000
+  const start = Date.now()
+  while (Date.now() - start < maxWait) {
+    try {
+      const list = await studentPage.locator('li:has-text("組別 1:")')
+      if (await list.count() > 0) {
+        const txt = await list.first().innerText()
+        if (expectedRegex.test(txt)) { seen = true; break }
+      }
+    } catch (e) {
+      // ignore and retry
+    }
+    await studentPage.waitForTimeout(1000)
+  }
+  if (!seen) {
+    throw new Error(`Student scoreboard did not update to ${expected} within ${maxWait}ms`)
   }
 
   // Wait a moment for the Firestore write to propagate
