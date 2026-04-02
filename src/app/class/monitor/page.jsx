@@ -1,6 +1,7 @@
 "use client"
 import React, { useEffect, useState } from 'react'
 import HandsMonitor from '../../../components/HandsMonitor'
+import Scoreboard from '../../../components/Scoreboard'
 import EndClassButton from '../../../components/EndClassButton'
 import { auth, signInWithEmail, createAccountWithEmail, signOutUser, db } from '../../../firebaseClient'
 import SignInForm from '../../../components/SignInForm'
@@ -211,7 +212,14 @@ export default function MonitorPage() {
         </div>
       )}
 
-      <HandsMonitor classId={classId} isOwner={user && classOwner && user.uid === classOwner} />
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', marginTop: 12 }}>
+        <div style={{ flex: 1 }}>
+          <HandsMonitor classId={classId} isOwner={user && classOwner && user.uid === classOwner} />
+        </div>
+        <div style={{ width: 320 }}>
+          <Scoreboard classId={classId} />
+        </div>
+      </div>
     </div>
   )
 }
