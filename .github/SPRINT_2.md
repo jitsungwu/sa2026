@@ -63,6 +63,47 @@
  - #7: 3 點（0–3 分規則）；#17: 2 點；#8: 2 點；#16 (整合): 2 點；#10: 1 點；#12: 2–3 點。  
  Sprint 2 推薦上線組合（2 週衝刺）: 完成 #7 + #17 + #8 + 測試覆蓋（總約 7 點）。
 
+### AC 補充細節（逐項）
+
+- #7（報告組給分）
+   - 錯誤回應：非報告組成員送分 → 403 + { error: "forbidden" }。
+   - 無效分數 → 400 + { error: "invalid_points" }。
+   - 重複送出：以 `handRef` 或 idempotency token 檢查並回傳 409，避免重複計分。
+   - 寫入內容：`participation_logs` 須含 `classId, group, points, timestamp, handRef (可選), givenBy`。
+
+- #17（舉手資料）
+   - `hands_raised` 每筆需含 `group, ownerId, timestamp, resolved:boolean`。
+   - `resolved` 由授權者（teacher/TA）或系統在處理完成時設定；owner 可短時間內取消。
+   - 權限：只有 class 的 teacher/TA 或 hand owner 可變更 `resolved`。
+
+- #11（單場報告上限）
+   - 範圍：以 `class.sessionId` 定義「單場」。
+   - 建議在 `class` doc 維護 `remaining_report_points`，API 在寫入前以 transaction 檢查並原子扣減。
+   - 教師 override：允許，但須記錄 `overrideBy` 與 `reason`。
+
+- #8（虛擬座位表 / 選人）
+   - 選人操作應回傳 `handRef` 或 `participantId` 以供後續給分。
+   - 權限：僅報告組成員可在其報告階段選人；同時選人以 first-write wins，UI 顯示占用狀態。
+   - 備援：若座位表無效或映射失敗，UI 提供手動輸入 participantId 的備援流程。
+
+- #14（座位表資料模型）
+   - 建議資料模型：在 `class` 文件或 `seating` collection 下維護 `seats: [{ seatId, participantId, group }]`。
+   - 操作需支援原子性或樂觀鎖定，避免多人同時選同一位學生造成 race condition。
+
+- #16（教師給分整合）
+   - API 需驗證 role（teacher/TA），分數範圍 `1–5`。
+   - 教師相關操作在 `participation_logs` 中記錄 `reason` 與 `approvedBy`（若為 override）。
+
+- #12（紀錄牆編輯/微調）
+   - 編輯採新增 adjustment record（而非覆寫原始 log）；調整需包含 `adjustedBy, adjustedAt, reason`。
+   - UI/ API 顯示原始值與調整差異以利稽核。
+
+- #10（學生個人分數檢視）
+   - 建議使用 denormalized `group_score` 欄位以提升讀取效能；說明更新頻率（寫入時觸發 background update 或定時批次）。
+   - 若顯示即時值，UI 應展現最後更新時間與一致性說明。
+
+- 測試與權限共通建議：在關鍵寫入（計分/扣點/調整）採 transaction 或 server-side guard，並補強 E2E 測試覆蓋 race condition 與權限邊界。
+
  - 驗收標準總表（高階）
  - 報告組能正常挑選目標並提交 0–3 分（0 分表示不合理或亂問）。  
  - `participation_logs` 正常新增且 Scoreboard 即時反映。  
