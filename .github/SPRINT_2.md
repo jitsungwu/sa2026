@@ -14,37 +14,42 @@
 
 優先順序與建議 Sprint 2 範圍（2 週）
 
-建議執行順序（由高到低）
-1. #14 — 先解決 #8 的前置依賴（理由：阻斷關係，必先行處理）
-2. #8 — 報告組對舉手組別評分（Sprint2 核心交付）
-3. #7 — 老師端評分流程 / UI（與 #8 互補，次高）
-4. #11 — Scoreboard / 展示相關改進（使用者可見價值高）
-5. #10 / #12 — 次要修正或整合（Bugfix / 小功能）
-6. #16 / #17 — 後續優化或影響較小的項目
+### AC 補充細節（逐項，Given / When / Then）
 
-- 必做（Sprint 2 核心，優先完成）
-  1. #7 — 實作報告組給分 UI 與流程（3 點）
-     - AC: 報告組介面可選擇目標舉手組別或手勢項目，輸入 0–3 分並送出；成功送出會在 `participation_logs` 新增記錄，包含 `classId, group, points, timestamp, handRef (若有), givenBy`。
-     - 測試要點: 單元測驗寫入 `participation_logs`，E2E 模擬報告組給分並驗證 Scoreboard 更新。
-  2. #17 — 確保舉手資料包含 group 與可被其他學生/報告組識別（2 點）
-     - AC: `hands_raised` 每筆含 `group`、`ownerId`（participantId）與 `timestamp`；刪除/取消/resolved 處理正確。
-     - 測試: E2E 驗證學生舉手後教師/其他學生可在 UI 找到該筆記錄。
-  3. #11 — 單場報告總點數上限（1 點）
-     - AC: 給分前檢查所屬報告或班級的剩餘可用點數，超出時回傳錯誤與 UI 訊息。
-     - 測試: 單元測驗覆蓋上限邏輯，E2E 驗證限制生效。
+- #7（報告組給分）
+   - Given 報告組成員登入於報告介面，When 選擇目標並輸入合法分數 0–3 並送出，Then 系統新增 `participation_logs`（含 `classId, group, points, timestamp, handRef?, givenBy`）並回傳 200；Scoreboard 在可見時段反映分數變動。
+   - Given 非報告組成員送分，When 發出請求，Then 回傳 403 + { error: "forbidden" }。
+   - Given 分數超範圍，When 發出請求，Then 回傳 400 + { error: "invalid_points" }。
+   - Given 相同 `handRef` 或相同 idempotency token 已處理，When 重複送出，Then 回傳 409 並不重複計分。
 
-- 可同步/次要（若時間允許）
-  - #16 — 復用教師給分的後端/寫入邏輯作為共用服務（2 點）。
-  - #10 — 學生個人分數檢視（1 點）。
-  - #12 — 紀錄牆編輯/審核（2–3 點，較大）。
+- #17（舉手資料）
+   - Given 學生按下舉手，When 系統建立 `hands_raised`，Then 該記錄包含 `group, ownerId, timestamp, resolved:false` 並可被授權者查閱。
+   - Given 手勢被處理（例如給分），When 處理完成，Then 系統由授權者或系統將 `resolved` 設為 true；owner 可在短時內取消。
 
-實作任務拆解（每項的具體工作）
- - UI: 報告組專用小型面板，列出當前 class 的 active `hands_raised`（依 group 聚合且可展開），每筆有「給分」操作。  
- - API / Firestore: 新增 `participation_logs` document on write；若 handRef 提供則同時更新 `hands_raised` 為 `active:false,resolved:true`。  
- - 商業邏輯: 檢核 `isOwner` 與授權（教師／TA）與報告組角色；檢查單場上限並回滾/拒絕不合法請求。  
- - 補充：教師透過教師介面給分時採 `1–5` 分制；報告組或舉手組別由學生在台上給分時採 `0–3` 分制。評分皆為整數，不允許小數或負值。API 層需根據 `givenBy` 的角色驗證分數範圍與授權。
+- #11（單場報告上限）
+   - Given `class.sessionId` 與 `remaining_report_points` 存在，When 嘗試給分且超出剩餘，Then 回傳 400 並顯示原因且不寫入 log。
+   - Given 剩餘足夠，When 成功扣減，Then API 以 transaction 原子扣減 `remaining_report_points` 並寫入 `participation_logs`。
+   - Given 教師 override，When 教師執行 override，Then 系統允許並在 log 中記錄 `overrideBy` 與 `reason`。
 
- - 情境對應（明確三種情境）：
+- #8（虛擬座位表 / 選人）
+   - Given 報告組進入選人流程，When 選擇座位並確認，Then 系統回傳 `handRef` 或 `participantId` 以供後續給分使用，並在 UI 顯示占用狀態（first-write wins）。
+   - Given 座位表映射失敗，When 使用者無法選人，Then UI 提供手動輸入 `participantId` 的備援流程。
+
+- #14（座位表資料模型）
+   - Given 需要支援座位表，When 設計資料結構，Then 在 `class` doc 或 `seating` collection 下提供 `seats: [{ seatId, participantId, group }]`，並支援原子更新或樂觀鎖以避免 race condition。
+
+- #16（教師給分整合）
+   - Given 教師或 TA 發出給分請求，When 請求被授權，Then API 檢查分數範圍 `1–5` 並在 `participation_logs` 記錄 `reason` 與 `approvedBy`（若為 override）。
+
+- #12（紀錄牆編輯/微調）
+   - Given 教師需調整分數，When 執行調整，Then 系統新增 adjustment record（包含 `adjustedBy, adjustedAt, reason`）而非覆寫原始 log；UI 顯示原始值與調整差異。
+
+- #10（學生個人分數檢視）
+   - Given 學生登入查看分數，When 展示分數，Then 使用 denormalized `group_score` 欄位以提升效能（或說明為 eventual consistency）；UI 同時展示最後更新時間與一致性說明。
+
+- 測試與權限共通建議：在關鍵寫入採 transaction 或 server-side guard，並增加 E2E 覆蓋 race condition 與權限邊界測試。
+
+ - 驗收標準總表（高階）
     1. **教師加分（全域權限）**：教師保有權利隨時對任意小組進行加分，採 `1–5` 分制（整數）。
     2. **教師提問情境**：當教師在教學中提問並由學生/小組回答時，回答小組的評分採 `0–3` 分制（整數）。
     3. **學生報告情境**：當小組上台報告，由提問或評分的小組（或報告組成員依流程）對報告小組評分，採 `0–3` 分制（整數）；教師可在該情境額外給報告小組加分（教師給分仍為 `1–5`）。
