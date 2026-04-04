@@ -145,3 +145,78 @@ Scenario 3: 組員重複選擇處理 (Group Consensus)
 
 - Issue #14 (登入時選擇座位) 為 Issue #8 (虛擬座位表介面) 的前置需求。完成 #14 可確保 #8 的視覺化功能能正確呈現真實座位資料。
 
+---
+
+## Implementation Details — Issue #2: Excel 匯入規格與驗證
+
+以下為本次開發（Issue #2）確認之最終需求與技術驗證規則，請以此作為前後端實作與測試依據。
+
+### 核心決議（已確認）
+- 支援檔案類型：僅支援 `.xls`（處理第一張工作表，index 0）。
+- 組號處理：保留原字串（例如 "01"），不可自動轉為數字。若檔案出現重複 `groupId`（相同字串出現多次），視為錯誤並停止匯入（錯誤碼：`DUPLICATE_GROUP`）。
+- 學號格式：必須為 9 位數字（正則：`^\d{9}$`）；不符合視為錯誤並停止匯入（錯誤碼：`INVALID_ACCOUNT`）。
+- 成員數一致性：每個 group header 的宣告人數（Col E）必須等於實際解析到的學生數；若不相符，停止匯入並回報錯誤（錯誤碼：`COUNT_MISMATCH`）。
+- 既有學生處理：若解析到的學生（相同學號）已存在於目標 class，視為錯誤並停止匯入（錯誤碼：`DUPLICATE_ACCOUNT`）。
+- 上傳流程：在實際匯入前，必須提供「解析預覽」頁面，顯示解析後的 groups、students、以及 `errors` / `warnings`；若 `errors` 非空，匯入按鈕需被禁用。
+
+### 解析規則（逐列處理）
+- 讀取第一張工作表，從第一列向下掃描。對每一列，取得欄位值：ColA、ColB、ColD、ColE（以 Excel 的 A/B/D/E 欄位為準）。
+- Group Header 判斷：若 `trim(ColA).length <= 2` 且 `ColE` 有數字值，則此列為 group header：
+  - `groupId` = 原始 `trim(ColA)`（字串）
+  - `declaredCount` = parseInt(ColE)
+  - 設定 `currentGroup = groupId`
+- Student Row 判斷：若 `ColA` 符合正則 `^\d{9}$`，則為學生資料列：
+  - 建立 student 物件：`{ account: ColA, name: ColB, major: ColD, row: <excel-row-number> }`
+  - 將 student 加入 `currentGroup` 的 student 清單。
+- 其他列：視為忽略列（會在 preview 顯示為 warning），但不會影響 group 資料結構。
+
+注意：若在遇到任何 student row 時尚未出現 `currentGroup`（也就是檔案先出現學生列），視為格式錯誤並停止解析（錯誤碼：`MISSING_GROUP_HEADER`）。
+
+### 驗證邏輯（Preview 階段與伺服器端重驗證）
+- 在 Preview 階段執行下列檢查（若有任何一項 fail，加入 `errors` 並禁止匯入）：
+  1. `groupId` 重複檢查：若相同 `groupId` 出現多個 group header，回報 `DUPLICATE_GROUP`。
+  2. 學號格式檢查：每個 student.account 必須符合 `^\d{9}$`，否則 `INVALID_ACCOUNT`。
+  3. 既有學生檢查：向服務端查詢目標 class 是否已含該 account；若存在，回報 `DUPLICATE_ACCOUNT`（包含該 row 與 account）。
+  4. 成員數一致性：對每個 group, 若 `parsedCount !== declaredCount`，回報 `COUNT_MISMATCH`（包含 declared / parsed）。
+- 伺服器端匯入 API 在真正寫入資料前必須重新執行相同驗證，避免 TOCTOU 問題（race condition）。
+
+### 錯誤代碼範例與 API 回應格式
+- 失敗回應範例：
+```
+{
+  "status": "error",
+  "code": "IMPORT_VALIDATION_FAILED",
+  "errors": [
+    {"type":"DUPLICATE_GROUP","message":"groupId '01' 出現多次"},
+    {"row":12,"type":"DUPLICATE_ACCOUNT","message":"學號 413401194 已存在於 class-A"},
+    {"group":"02","type":"COUNT_MISMATCH","declared":5,"parsed":4}
+  ]
+}
+```
+- 成功回應範例（匯入完成）：
+```
+{
+  "status":"ok",
+  "importedGroups":2,
+  "importedStudents":10
+}
+```
+
+### Preview UI 要求
+- 上傳後顯示解析預覽頁面：列出每個 `groupId` 的 `declaredCount`、`parsedCount`、以及該 group 的 `students`（含原始列號）。
+- 顯示 `errors`（紅）與 `warnings`（黃）；若 `errors` 非空，禁用「確認匯入」按鈕並顯示錯誤摘要。
+- 若使用者在 preview 同意並按下「確認匯入」，前端呼叫匯入 API，API 再次驗證並執行寫入。
+
+### 邊界情況（測試清單）
+- 檔案格式錯誤（非 `.xls` 或損毀）。
+- 檔案中先出現 student rows（缺少 group header）。
+- 重複 `groupId`（應報錯）。
+- 任一 `student.account` 非 9 位數字（應報錯）。
+- `declaredCount` 與 parsed 不符（應報錯）。
+- 解析到已在 class 中存在的學號（應報錯）。
+- 空白列或註解列應被忽略並在 preview 顯示為 warning。
+
+---
+
+請確認上述內容無誤；我確認後會繼續建立解析器的初始實作與單元測試範本。
+
