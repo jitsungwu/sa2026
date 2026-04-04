@@ -1,125 +1,147 @@
-# Sprint 2 — 報告組對舉手組別評分 (Report-Group Scoring)
+# Sprint 2 — Issues in Project Iteration = Iteration 2
 
-目標：讓報告組在課堂中能對被舉手的組別給予 0–3 分，並將該分數記入 `participation_logs`，即時反映於 Scoreboard，同時保留審計紀錄與防護（權限、上限）。
+## 🎯 Sprint Goal
 
- - 相關 Issue（建議完成清單）
- - #7: 學生（報告組）：在台上給予 0–3 點 — 核心功能。（P1）
- - #8: 學生（報告組）：虛擬座位表介面 — （選項）若報告組需從座位表選人。（P1；依賴：#14）
- - #14: （前置）修正座位表 / 選人流程以支援 #8。（P1）
- - #17: 學生: 舉手 — 需確認舉手流程穩定且包含 group 與 participantId（依賴）。（P1）
- - #16: 教師: 給報告組及發言組分數 — 教師給分範圍 `1–5`，可重用給分與 log 寫入邏輯。（P1）
- - #11: 教師：限制單場報告總點數上限 — 建議延後至 backlog（非本 sprint 優先）。（P1）
- - #12: 教師：檢視紀錄牆並微調點數 — 支援教師補救/調整分數與 audit。（P1）
- - #10: 學生：登入後查看個人累計點數 — 反饋與驗證分數入帳（用戶端顯示）。（P1）
+讓報告組在課堂中能對被舉手的組別給予 0–3 分，並將該分數記入 `participation_logs`，即時反映於 Scoreboard，同時保留審計紀錄與防護（權限、上限）。
 
-優先順序與建議 Sprint 2 範圍（2 週）
+### 核心目標
+1. **報告組互動評分** — 報告組成員可在台上對舉手/發言小組進行 0–3 分評分
+2. **即時計分反饋** — 評分結果即時更新至 `participation_logs` 和 Scoreboard
+3. **虛擬座位表支持** — 報告組可透過座位表介面選人並記錄發言者
+4. **權限與防護** — 確保只有授權者可進行給分，防止越權與重複計分
+5. **審計與溯源** — 完整記錄所有計分操作供教師檢視與微調
 
-### AC 補充細節（逐項，Given / When / Then）
+---
 
-- #7（報告組給分）
-   - Given 報告組成員登入於報告介面，When 選擇目標並輸入合法分數 0–3 並送出，Then 系統新增 `participation_logs`（含 `classId, group, points, timestamp, handRef?, givenBy`）並回傳 200；Scoreboard 在可見時段反映分數變動。
-   - Given 非報告組成員送分，When 發出請求，Then 回傳 403 + { error: "forbidden" }。
-   - Given 分數超範圍，When 發出請求，Then 回傳 400 + { error: "invalid_points" }。
-   - Given 相同 `handRef` 或相同 idempotency token 已處理，When 重複送出，Then 回傳 409 並不重複計分。
+### Issue #2: 教師：透過 Excel 批次匯入學生名單
+- State: OPEN
+- Labels: -
+- URL: https://github.com/jitsungwu/sa2026/issues/2
 
-- #17（舉手資料）
-   - Given 學生按下舉手，When 系統建立 `hands_raised`，Then 該記錄包含 `group, ownerId, timestamp, resolved:false` 並可被授權者查閱。
-   - Given 手勢被處理（例如給分），When 處理完成，Then 系統由授權者或系統將 `resolved` 設為 true；owner 可在短時內取消。
+身為 授課教師，我想要 透過上傳 Excel 檔案批次匯入名單，因此我可以 確保學生資訊準確並快速開啟課程。
+檔案格式說明 (Excel Structure)
+檔案並非單純的扁平 Table，而是以「組別列」作為區隔的層級結構。
+視覺範例：
+| 帳號 (Col A) | 姓名 (Col B) | 系級 (Col D) | 成員數 (Col E) |
+| :--- | :--- | :--- | :--- |
+| 01 | | | 5 |
+| 413401194 | 張XX | (日)資管系 | |
+| 413401390 | 吳XX | (日)資管系 | |
+| 02 | | | 5 |
+| 413401209 | 黃XX | (日)資管系 | |
 
-- #11（單場報告上限）
-   - Given `class.sessionId` 與 `remaining_report_points` 存在，When 嘗試給分且超出剩餘，Then 回傳 400 並顯示原因且不寫入 log。
-   - Given 剩餘足夠，When 成功扣減，Then API 以 transaction 原子扣減 `remaining_report_points` 並寫入 `participation_logs`。
-   - Given 教師 override，When 教師執行 override，Then 系統允許並在 log 中記錄 `overrideBy` 與 `reason`。
+解析邏輯定義：組別標題列 (Group Header Row): 當 Column A 長度 $\le 2$（例如 "01"）且 Column E 有值時，此列為組別定義，更新當前組別編號。學生資料列 (Student Data Row): 當 Column A 長度 $> 5$（學號格式）時，此列為學生資料，應歸屬於「最近一次出現的組別編號」。
 
-- #8（虛擬座位表 / 選人）
-   - Given 報告組進入選人流程，When 選擇座位並確認，Then 系統回傳 `handRef` 或 `participantId` 以供後續給分使用，並在 UI 顯示占用狀態（first-write wins）。
-   - Given 座位表映射失敗，When 使用者無法選人，Then UI 提供手動輸入 `participantId` 的備援流程。
+Scenario 1：成功解析並匯入階層式名單
+- Given (前提)： 老師已進入甲班管理頁面，並擁有一份符合上述層級格式的 Excel 檔案。
+- When (當操作發生時)： 老師上傳該檔案並點擊「解析預覽」。
+- Then (預期結果)：
+  -  系統應正確識別出「01」組包含張XX、吳XX等 5 位同學。
+  - 系統應正確識別出「02」組包含黃XX等 5 位同學。
 
-- #14（座位表資料模型）
-   - Given 需要支援座位表，When 設計資料結構，Then 在 `class` doc 或 `seating` collection 下提供 `seats: [{ seatId, participantId, group }]`，並支援原子更新或樂觀鎖以避免 race condition。
+### Issue #7: 學生（報告組）：給予舉手組點數
+- State: OPEN
+- Labels: -
+- URL: https://github.com/jitsungwu/sa2026/issues/7
 
-- #16（教師給分整合）
-   - Given 教師或 TA 發出給分請求，When 請求被授權，Then API 檢查分數範圍 `1–5` 並在 `participation_logs` 記錄 `reason` 與 `approvedBy`（若為 override）。
+身為 報告組同學，我想要 在台上直接點選發問同學並給予 **0-3 分**，因此我可以 實質回饋對我們報告有幫助的建議。
 
-- #12（紀錄牆編輯/微調）
-   - Given 教師需調整分數，When 執行調整，Then 系統新增 adjustment record（包含 `adjustedBy, adjustedAt, reason`）而非覆寫原始 log；UI 顯示原始值與調整差異。
+接受條件
+Scenario 1: 
+- Given 報告組成員登入於報告介面
+- When 選擇目標並輸入合法分數 0–3 並送出
+- Then 系統新增 `participation_logs`（含 `classId, group, points, timestamp, handRef?, givenBy`）並回傳 200；Scoreboard 在可見時段反映分數變動。
 
-- #10（學生個人分數檢視）
-   - Given 學生登入查看分數，When 展示分數，Then 使用 denormalized `group_score` 欄位以提升效能（或說明為 eventual consistency）；UI 同時展示最後更新時間與一致性說明。
+Scenario 2:
+- Given 非報告組成員送分
+- When 發出請求
+- Then 回傳 403 + { error: "非報告組" }。
 
-- 測試與權限共通建議：在關鍵寫入採 transaction 或 server-side guard，並增加 E2E 覆蓋 race condition 與權限邊界測試。
+Scenario 3: 
+- Given 分數超範圍
+- When 發出請求
+- Then 回傳 400 + { error: "分數超範圍" }。
 
- - 驗收標準總表（高階）
-    1. **教師加分（全域權限）**：教師保有權利隨時對任意小組進行加分，採 `1–5` 分制（整數）。
-    2. **教師提問情境**：當教師在教學中提問並由學生/小組回答時，回答小組的評分採 `0–3` 分制（整數）。
-    3. **學生報告情境**：當小組上台報告，由提問或評分的小組（或報告組成員依流程）對報告小組評分，採 `0–3` 分制（整數）；教師可在該情境額外給報告小組加分（教師給分仍為 `1–5`）。
+Scenario 4:
+- Given 相同 `handRef` 或相同 idempotency token 已處理
 
- - 計分目標：系統僅對**小組（group）**進行記分，不會直接以單一學生為主要計分單位（可由小組分配規則另行映射）。
+### Issue #8: 學生（報告組）：虛擬座位表介面
+- State: OPEN
+- Labels: -
+- URL: https://github.com/jitsungwu/sa2026/issues/8
 
- - 資料與聚合策略：`participation_logs` 為永久保留記錄（課程結束後由清除程序移除）；由於資料量會隨時間增長，系統不應每次即時從 `participation_logs` 重新彙總小組累計分數。建議：
-    - 在 `groups` 或 `class` 文件上維護一個 denormalized 的 `group_score`（或時間窗內的聚合欄位），透過事件驅動或定期批次作業更新；
-    - 或在寫入 `participation_logs` 時觸發輕量的計分工作（例如 Cloud Function / background job）去更新 denormalized 聚合，而非在讀取時重算整個日誌。 
+身為 同學，我想要 在操作介面查看「虛擬座位表」，因此我可以 在小組分享時間知道其他組別的分布位置。
+Scenario 1: 視覺化呈現教室布局
+* Given (前提)： 
+  * 多個組別已完成座位選擇。
+  * 我正在「學生互動儀表板」點擊「查看座位圖」。
+* When (當操作發生時)：
+  * 頁面切換至網格視圖。
+* Then (預期結果)： 
+  * 系統應以網格形式呈現教室，且有人的格子必須顯示組號。
 
- - 保留與清除：`participation_logs` 長期保留為審計來源，僅在課程結束或依保留政策由批次清除；即時顯示的 Scoreboard 應使用 denormalized 聚合欄位以降低查詢成本。
- - 審計: 在 `participation_logs` 或另外的 audit collection 記錄 `givenBy`, `givenAt`, `reason`（若為教師微調）。
- - 測試: 單元測、integration 測試 firebase wrapper（`src/lib/firestoreWrapper.js`），並新增/修改 E2E（例如 `e2e/04-teacher-give-points.spec.js` 類似的報告組 E2E）。
+Scenario 2: 例外狀況
+* Given (前提)： 
+  * 課程尚未啟動。
+  * 我正在「學生互動儀表板」點擊「查看座位圖」。
+* When (當操作發生時)： 
+  * 頁面切換至網格視圖。
+* Then (預期結果)：
+  * 系統應以回應「課程尚未啟動」。
 
-估時總結（建議以故事點）
- - #7: 3 點（0–3 分規則）；#17: 2 點；#8: 2 點；#16 (整合): 2 點；#10: 1 點；#12: 2–3 點。  
- Sprint 2 推薦上線組合（2 週衝刺）: 完成 #7 + #17 + #8 + 測試覆蓋（總約 7 點）。
+---
 
-### AC 補充細節（逐項）
+### Issue #10: 學生：登入後查看小組累計點數
+- State: OPEN
+- Labels: -
+- URL: https://github.com/jitsungwu/sa2026/issues/10
 
-- #7（報告組給分）
-   - 錯誤回應：非報告組成員送分 → 403 + { error: "forbidden" }。
-   - 無效分數 → 400 + { error: "invalid_points" }。
-   - 重複送出：以 `handRef` 或 idempotency token 檢查並回傳 409，避免重複計分。
-   - 寫入內容：`participation_logs` 須含 `classId, group, points, timestamp, handRef (可選), givenBy`。
+身為 在班學生，我想要 登入後查詢自己目前的累計點數，因此我可以 瞭解自己的平時表現並適時調整參與度。
 
-- #17（舉手資料）
-   - `hands_raised` 每筆需含 `group, ownerId, timestamp, resolved:boolean`。
-   - `resolved` 由授權者（teacher/TA）或系統在處理完成時設定；owner 可短時間內取消。
-   - 權限：只有 class 的 teacher/TA 或 hand owner 可變更 `resolved`。
+Scenario 1:
+- Given 學生登入查看分數
+- When 提出要求
+- Then 
+  - 展示分數
+  - 使用 denormalized `group_score` 欄位以提升效能（或說明為 eventual consistency）
+  - UI 同時展示最後更新時間與一致性說明。
 
-- #11（單場報告上限）
-   - 範圍：以 `class.sessionId` 定義「單場」。
-   - 建議在 `class` doc 維護 `remaining_report_points`，API 在寫入前以 transaction 檢查並原子扣減。
-   - 教師 override：允許，但須記錄 `overrideBy` 與 `reason`。
 
-- #8（虛擬座位表 / 選人）
-   - 選人操作應回傳 `handRef` 或 `participantId` 以供後續給分。
-   - 權限：僅報告組成員可在其報告階段選人；同時選人以 first-write wins，UI 顯示占用狀態。
-   - 備援：若座位表無效或映射失敗，UI 提供手動輸入 participantId 的備援流程。
+### Issue #14: 學生: 登入時選擇座位 (位置設定)
+- State: OPEN
+- Labels: -
+- URL: https://github.com/jitsungwu/sa2026/issues/14
 
-- #14（座位表資料模型）
-   - 建議資料模型：在 `class` 文件或 `seating` collection 下維護 `seats: [{ seatId, participantId, group }]`。
-   - 操作需支援原子性或樂觀鎖定，避免多人同時選同一位學生造成 race condition。
+身為 同學，我想要 在登入時於「虛擬座位表」選擇我的座位，因此我可以 提供組別的實體位置供系統紀錄。
+Scenario 1: 首次選擇組別位置 (Happy Path)
+- Given (前提)： 
+  - 我已進入甲班頁面並選定為「第 3 組」。
+  - 系統顯示 白板在前，並且由右到左有三大區，左邊有6排、中間有8排、右邊有8排的教室網格。
+- When (當操作發生時)： 
+  - 我點擊座標 (行2, 列3) 的空白方格並確認。
+- Then (預期結果)： 
+  - 系統應在 Firestore 的 classes/class-A/layout 中更新該座標為 groupId: 3。
+  - 該方格顏色應立即變更為我所屬組別的高亮色，並導向互動儀表板。
 
-- #16（教師給分整合）
-   - API 需驗證 role（teacher/TA），分數範圍 `1–5`。
-   - 教師相關操作在 `participation_logs` 中記錄 `reason` 與 `approvedBy`（若為 override）。
+Scenario 2: 防止座位衝突 (Conflict Prevention)
+- Given (前提)：
+  - 「第 1 組」已經選擇了座標 (行1, 列1)。
+- When (當操作發生時)：
+  - 我（第 3 組）嘗試點擊已被佔用的 (行1, 列1) 時。
+- Then (預期結果)： 
+  - 系統應顯示提示「此位置已被第 1 組選取」，且不允許我提交。介面應透過 onSnapshot 即時更新，將已被選取的格子設為 disabled。
 
-- #12（紀錄牆編輯/微調）
-   - 編輯採新增 adjustment record（而非覆寫原始 log）；調整需包含 `adjustedBy, adjustedAt, reason`。
-   - UI/ API 顯示原始值與調整差異以利稽核。
+Scenario 3: 組員重複選擇處理 (Group Consensus)
+- Given (前提)：
+  - 我的同組隊友已經在另一台手機選好了位置。
+- When (當操作發生時)：
+  - 我稍後登入並選擇同一個班級與組別時。
+- Then (預期結果)：
+  - 系統應偵測到「第 3 組已設定位置」，自動跳過選擇頁面，直接進入儀表板並顯示已選定的座位。
 
-- #10（學生個人分數檢視）
-   - 建議使用 denormalized `group_score` 欄位以提升讀取效能；說明更新頻率（寫入時觸發 background update 或定時批次）。
-   - 若顯示即時值，UI 應展現最後更新時間與一致性說明。
+---
 
-- 測試與權限共通建議：在關鍵寫入（計分/扣點/調整）採 transaction 或 server-side guard，並補強 E2E 測試覆蓋 race condition 與權限邊界。
+**相依註記 (2026-04-02)**
 
- - 驗收標準總表（高階）
- - 報告組能正常挑選目標並提交 0–3 分（0 分表示不合理或亂問）。  
- - `participation_logs` 正常新增且 Scoreboard 即時反映。  
- - 無授權或超限情況下給分會被拒絕並回傳明確錯誤。  
- - 新增 E2E 覆蓋核心流程（報告組給分、Scoreboard 更新、上限拒絕）。
+- Issue #14 (登入時選擇座位) 為 Issue #8 (虛擬座位表介面) 的前置需求。完成 #14 可確保 #8 的視覺化功能能正確呈現真實座位資料。
 
-風險與注意事項
- - Firestore 寫入時序：需小心 race condition（建議使用 transactions 或 server-side timestamp + idempotency）。
- - 權限設計：明確定義報告組角色與授權，避免學生越權給分。  
- - E2E 穩定性：既有測試已做多次修正，新增測試時請重用現有 test helpers（`e2e` 目錄內）以維持穩定。
-
-下一步（我可以代勞）
- - 1) 將 Sprint 2 的 selected items（#7,#17,#8,#16）拆成具體 GitHub Issues / PR checklist（我可產出 JSON/markdown 草稿）。
- - 2) 開始實作：我可先草擬 `RaiseHand` → `participation_logs` 的寫入程式碼片段與 E2E 測試範例。
