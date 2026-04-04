@@ -24,3 +24,71 @@
 執行 `npm run test:e2e` 或 `npx playwright test e2e/ --workers=1` 以驗證所有測試通過。
 
 最後驗證時間：2026-03-22 — 7 個通過 (34.7秒) ✓
+
+---
+
+## ⏸️ 待開發功能的測試
+
+### 情境 10：座位表功能
+- **狀態**：暫時跳過
+- **原因**：座位表功能還未開發
+- **計畫**：座位表功能完成後，將實裝相應測試 (10-seating-chart.spec.js)
+
+---
+
+## 📋 測試資料準備
+
+### 使用的測試帳號
+
+為情境8（學生登入測試）準備的測試帳號已在數據庫中建立：
+
+| 學號 | 班級 | 密碼 | 用途 |
+|------|------|------|------|
+| 123456789 | class-A | 12345678 | 舊版測試帳號 |
+| 987654321 | demo | 12345678 | 模擬器測試帳號 |
+| 413000001-413000010 | demo | 12345678 | Excel表格匯入帳號 |
+
+### E2E情境 9：學生帳號建立測試 (09-student-signup.spec.js)
+
+**說明**：此測試獨立運行，無需依賴其他測試。建議在開發早期單獨執行。
+
+**帳號建立流程**：
+- 學生只需輸入**學號、姓名、密碼**（無需輸入班級代碼）
+- 系統自動尋找該學號在哪個班級中已預先註冊
+- 系統自動生成 email 為 `學號@cloud.fju.edu.tw` 格式
+- 帳號建立時會同時設定密碼與 email
+
+**測試場景**（共9個）：
+1. ✓ 學生可以看到建立帳號選項
+2. ✓ 點擊建立帳號後顯示申請表單（無班級代碼欄）
+3. ✓ 表單數據驗證（空字段禁用提交）
+4. ✓ 密碼不匹配驗證
+5. ✓ 使用Excel資料成功建立帳號（系統自動識別班級）
+6. ✓ 可以用新建帳號登入
+7. ✓ 未預先註冊的帳號建立失敗
+8. ✓ 驗證Email自動生成格式
+9. ✓ 可以返回到登入頁面
+
+**運行方式**：
+```bash
+# 單獨運行此測試
+npx playwright test e2e/09-student-signup.spec.js
+
+# 或用 npm 命令
+npm run test:e2e -- e2e/09-student-signup.spec.js
+```
+
+### 初始化測試數據
+
+運行以下命令可初始化所有測試數據（班級 + 學生帳號）：
+
+```bash
+# 使用 Firebase 模擬器時
+npm run emulators:seed
+
+# 或單獨運行
+npm run emulators:start  # 啟動模擬器（另一個終端）
+node scripts/seed-classes.js
+node scripts/seed-test-students.js
+node scripts/import-students-from-excel.js ".github/Group_list_2026-04-04(demo).xlsx" demo
+```

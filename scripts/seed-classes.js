@@ -11,6 +11,7 @@
  * - 2A: 二甲 (10 groups)
  * - 2B: 二乙 (15 groups)
  * - demo: 測試 (5 groups)
+ * - class-A: 測試班級 (5 groups) - for E2E tests
  */
 
 import dotenv from 'dotenv'
@@ -43,6 +44,7 @@ async function seed() {
     { id: '2A', name: '二甲', groupCount: 10 },
     { id: '2B', name: '二乙', groupCount: 15 },
     { id: 'demo', name: '測試', groupCount: 5 },
+    { id: 'class-A', name: '測試班級', groupCount: 5 },
   ]
 
   try {

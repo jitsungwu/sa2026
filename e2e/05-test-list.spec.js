@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './test-fixtures'
 import dotenv from 'dotenv'
 
 dotenv.config({ path: '.env.local' })

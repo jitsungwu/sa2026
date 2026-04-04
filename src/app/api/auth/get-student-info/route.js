@@ -2,11 +2,11 @@ import { db } from '../../../../firebaseClient'
 import { doc, getDoc } from 'firebase/firestore'
 
 /**
- * POST /api/auth/student-signin
- * 驗證學生帳號及密碼，檢查是否屬於指定班級
+ * POST /api/auth/get-student-info
+ * 登入後獲取學生資訊
  * 
  * Request body:
- * { account: "123456789", password: "12345678", classId: "demo" }
+ * { account: "413000001", classId: "demo" }
  * 
  * Response:
  * { success: true, student: { account, name, groupId, classId, seatSelected } }
@@ -16,20 +16,12 @@ import { doc, getDoc } from 'firebase/firestore'
 
 export async function POST(request) {
   try {
-    const { account, password, classId } = await request.json()
+    const { account, classId } = await request.json()
 
     // 驗證帳號格式
     if (!account || account.trim().length === 0) {
       return Response.json(
         { success: false, error: '帳號不能為空' },
-        { status: 400 }
-      )
-    }
-
-    // 驗證密碼
-    if (!password || password.length < 6) {
-      return Response.json(
-        { success: false, error: '密碼格式不正確' },
         { status: 400 }
       )
     }
@@ -42,29 +34,7 @@ export async function POST(request) {
       )
     }
 
-    // 1. 查詢全域 students/{account} 文檔
-    const studentDocRef = doc(db, 'students', account)
-    const studentDocSnap = await getDoc(studentDocRef)
-
-    if (!studentDocSnap.exists()) {
-      return Response.json(
-        { success: false, error: '帳號或密碼錯誤' },
-        { status: 401 }
-      )
-    }
-
-    const studentData = studentDocSnap.data()
-
-    // 2. 驗證密碼
-    // WARNING: 生產環境應使用加密比對，此為簡易實作
-    if (studentData.password !== password) {
-      return Response.json(
-        { success: false, error: '帳號或密碼錯誤' },
-        { status: 401 }
-      )
-    }
-
-    // 3. 查詢班級內的學生記錄確保帳號屬於該班級
+    // 查詢班級內的學生記錄
     const classStudentDocRef = doc(db, `classes/${classId}/students`, account)
     const classStudentSnap = await getDoc(classStudentDocRef)
 
@@ -77,8 +47,7 @@ export async function POST(request) {
 
     const classStudentData = classStudentSnap.data()
 
-    // 4. 檢查該班級的座位選擇狀態
-    // 如果該組已選座位，則返回座位資訊；否則返回需要選座位的信號
+    // 檢查該班級的座位選擇狀態
     const groupId = classStudentData.groupId
     const layoutDocRef = doc(db, `classes/${classId}/layout`, 'grid')
     const layoutSnap = await getDoc(layoutDocRef)
@@ -95,17 +64,16 @@ export async function POST(request) {
       success: true,
       student: {
         account,
-        name: studentData.name || classStudentData.name,
-        major: studentData.major || classStudentData.major,
+        name: classStudentData.name || '',
         groupId,
         classId,
         seatSelected
       }
     })
   } catch (error) {
-    console.error('Student signin error:', error)
+    console.error('Get student info error:', error)
     return Response.json(
-      { success: false, error: error.message || '登入驗證失敗' },
+      { success: false, error: error.message || '無法獲取學生資訊' },
       { status: 500 }
     )
   }
