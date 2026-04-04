@@ -4,7 +4,7 @@ const OWNER = 'jitsungwu';
 const REPO = 'sa2026';
 const GITHUB = process.env.GITHUB_TOKEN;
 const PROJECT_NUMBER = 2;
-const TARGET_ISSUES = [7,16,17,11,12,10,8];
+const TARGET_ISSUES = [7,16,17,11,12,10,8,14];
 const TARGET_PRIORITY_NAME = 'P1';
 
 if (!GITHUB) {
