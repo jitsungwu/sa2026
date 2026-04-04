@@ -37,6 +37,7 @@ export default function ImportPage() {
       const mapped = []
       if (ws) {
         ws.eachRow((row, rowNum) => {
+          if (rowNum === 1) return // skip header row
           mapped.push({
             A: (row.getCell(1).value ?? '').toString(),
             B: (row.getCell(2).value ?? '').toString(),
