@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react'
-import * as XLSX from 'xlsx'
+import { Workbook } from 'exceljs'
 
 export default function ImportPage() {
   const [file, setFile] = useState(null)
@@ -31,16 +31,21 @@ export default function ImportPage() {
     setLoading(true)
     try {
       const ab = await file.arrayBuffer()
-      const wb = XLSX.read(ab, { type: 'array' })
-      const sheet = wb.Sheets[wb.SheetNames[0]]
-      const data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false })
-      const mapped = data.map((r, idx) => ({
-        A: (r[0] ?? '').toString(),
-        B: (r[1] ?? '').toString(),
-        D: (r[3] ?? '').toString(),
-        E: (r[4] ?? '').toString(),
-        row: idx + 1
-      }))
+      const wb = new Workbook()
+      await wb.xlsx.load(ab)
+      const ws = wb.getWorksheet(1)
+      const mapped = []
+      if (ws) {
+        ws.eachRow((row, rowNum) => {
+          mapped.push({
+            A: (row.getCell(1).value ?? '').toString(),
+            B: (row.getCell(2).value ?? '').toString(),
+            D: (row.getCell(4).value ?? '').toString(),
+            E: (row.getCell(5).value ?? '').toString(),
+            row: rowNum
+          })
+        })
+      }
       setRows(mapped)
       // call server preview
       const resp = await fetch('/api/import/preview', {
