@@ -46,7 +46,44 @@ Scenario 1：成功解析並匯入階層式名單
 
 身為 報告組同學，我想要 在台上直接點選發問同學並給予 **0-3 分**，因此我可以 實質回饋對我們報告有幫助的建議。
 
+接受條件
 
+Scenario 1: 設定組長
+- Given 報告組成員已登入，而且老師已經設定報告組別
+- When 報告組別同學可以看到「我是組長」的按鈕
+- Then 第一位按下「我是組長」的同學成為組長，負責給分。
+
+Scenario 2:  給發問組分數
+- Given 報告組已經設定組長
+- When 組長可以看到同學舉手，報告組別依順序給發問組分數( 0–3 )並送出
+- Then 系統新增 `participation_logs`（含 `classId, group, points, timestamp, handRef?, givenBy`）並回傳 200；Scoreboard 在可見時段反映分數變動。
+
+Scenario 3: 非組長送分
+- Given 非報告組成員送分或者非組長送分
+- When 發出請求
+- Then 回傳 403 + { error: "非報告組組長" }。
+
+Scenario 4: 分數超範圍 
+- Given 分數超範圍
+- When 發出請求
+- Then 回傳 400 + { error: "分數超範圍" }。
+
+---
+**注意事項**
+#28 要能知道是否有同學設定自己為組長，萬一設定錯誤，也可以重新指定組長
+
+---
+
+**最終決議 (2026-04-02)**
+
+- 分數制：教師採 1–5（整數）；報告組相關互評採 0–3（整數）；不允許小數或負值。
+- 情境（明確三種）：
+  1. 教師加分（全域權限）：教師可隨時對任意小組給分，採 1–5。
+  2. 教師提問情境：教師提問並由學生/小組回答時，回答小組的評分採 0–3；教師可在此情境額外給分（1–5）。
+  3. 學生報告情境：小組上台報告時，評分方（報告組或其他指定小組）採 0–3；教師可額外給分（1–5）。
+- 計分目標：系統僅對小組（group）計分；個人分數由小組分配規則另行定義。
+- 審計與資料保留：`participation_logs` 為長期保留之審計紀錄（課程結束後清除）；即時 Scoreboard 應使用 denormalized 聚合欄位或 background job 更新，避免每次從日誌重算。
+- API 與實作建議：在給分 endpoint 中依 `givenBy.role` 驗證範圍（教師 1..5，報告組/學生 0..3），所有寫入與 hands resolving 建議以 transaction 或原子作業完成，並同時寫入 `participation_logs` 與更新 denormalized 聚合欄位。
 
 
 ### Issue #24: 學生：登入系統
@@ -86,41 +123,40 @@ Scenario 3：登入失敗
 - URL: https://github.com/jitsungwu/sa2026/issues/10
 
 身為 在班學生，我想要 登入後查詢自己目前的累計點數，因此我可以 瞭解自己的平時表現並適時調整參與度。
+接受條件
+Scenario 1: 
+- Given 報告組成員已登入，而且老師已經設定報告組別
+- When 報告組別可以看到同學舉手，報告組別依順序給發問組分數( 0–3 )並送出
+- Then 系統新增 `participation_logs`（含 `classId, group, points, timestamp, handRef?, givenBy`）並回傳 200；Scoreboard 在可見時段反映分數變動。
 
-Scenario 1:
-- Given 學生登入查看分數
-- When 提出要求
-- Then 
-  - 展示分數
-  - 使用 denormalized `group_score` 欄位以提升效能（或說明為 eventual consistency）
-  - UI 同時展示最後更新時間與一致性說明。
+Scenario 2:
+- Given 非報告組成員送分
+- When 發出請求
+- Then 回傳 403 + { error: "非報告組" }。
+
+Scenario 3: 
+- Given 分數超範圍
+- When 發出請求
+- Then 回傳 400 + { error: "分數超範圍" }。
+
+Scenario 4:
+- Given 相同的組別只有第一位登入的同學可以給分，其他同學不能給分
+- When 重複送出
+- Then 回傳 409 + { error: "重複計分" }。並不重複計分。
 
 
-### Issue #14: 學生: 登入時選擇座位 (位置設定)
-- State: OPEN
-- Labels: -
-- URL: https://github.com/jitsungwu/sa2026/issues/14
+---
 
-身為 同學，我想要 在登入時於「虛擬座位表」選擇我的座位，因此我可以 提供組別的實體位置供系統紀錄。
-Scenario 1: 首次選擇組別位置 (Happy Path)
-- Given (前提)： 
-  - 我已登入，系統自動檢查班級及組別。
-  - 系統顯示 白板在前，並且由右到左有三大區，左邊有6排、中間有8排、右邊有8排的教室網格。
-- When (當操作發生時)： 
-  - 我點擊座標 (行2, 列3) 的空白方格並確認。
-- Then (預期結果)： 
-  - 系統應在 Firestore 的 classes/class-A/layout 中更新該座標為 groupId: 3。
-  - 該方格顏色應立即變更為我所屬組別的高亮色，並導向互動儀表板。
+**最終決議 (2026-04-02)**
 
-Scenario 2: 防止座位衝突 (Conflict Prevention)
-- Given (前提)：
-  - 「第 1 組」已經選擇了座標 (行1, 列1)。
-  - When (當操作發生時)：
-  - 我（第 3 組）嘗試點擊已被佔用的 (行1, 列1) 時。
-  - Then (預期結果)： 
-  - 系統應顯示提示「此位置已被第 1 組選取」，且不允許我提交。介面應透過 onSnapshot 即時更新，將已被選取的格子設為 disabled。
-
-Scenario 3: 組員重複選擇處理 (Group Consensus)
+- 分數制：教師採 1–5（整數）；報告組相關互評採 0–3（整數）；不允許小數或負值。
+- 情境（明確三種）：
+  1. 教師加分（全域權限）：教師可隨時對任意小組給分，採 1–5。
+  2. 教師提問情境：教師提問並由學生/小組回答時，回答小組的評分採 0–3；教師可在此情境額外給分（1–5）。
+  3. 學生報告情境：小組上台報告時，評分方（報告組或其他指定小組）採 0–3；教師可額外給分（1–5）。
+- 計分目標：系統僅對小組（group）計分；個人分數由小組分配規則另行定義。
+- 審計與資料保留：`participation_logs` 為長期保留之審計紀錄（課程結束後清除）；即時 Scoreboard 應使用 denormalized 聚合欄位或 background job 更新，避免每次從日誌重算。
+- API 與實作建議：在給分 endpoint 中依 `givenBy.role` 驗證範圍（教師 1..5，報告組/學生 0..3），所有寫入與 hands resolving 建議以 transaction 或原子作業完成，並同時寫入 `participation_logs` 與更新 denormalized 聚合欄位。
 - Given (前提)：
   - 我的同組隊友已經在另一台手機選好了位置。
   - When (當操作發生時)：
