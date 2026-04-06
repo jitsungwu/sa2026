@@ -5,6 +5,7 @@ import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp,
 
 export default function HandsMonitor({ classId, isOwner }) {
   const [hands, setHands] = useState([])
+  const [presentingGroup, setPresentingGroup] = useState(null)
 
   useEffect(() => {
     if (!classId) return
@@ -22,6 +23,21 @@ export default function HandsMonitor({ classId, isOwner }) {
       (err) => console.error('Hands monitor snapshot error:', err)
     )
     return () => unsub()
+  }, [classId])
+
+  useEffect(() => {
+    if (!classId) return
+    const classRef = doc(db, 'classes', classId)
+    const unsubClass = onSnapshot(classRef, (snap) => {
+      if (snap && typeof snap.data === 'function') {
+        const data = snap.data() || {}
+        setPresentingGroup(data.presentingGroupId || null)
+      } else {
+        setPresentingGroup(null)
+      }
+    }, (err) => console.error('class doc snapshot error:', err))
+
+    return () => unsubClass()
   }, [classId])
 
   const handleAward = async (hand) => {
@@ -78,6 +94,25 @@ export default function HandsMonitor({ classId, isOwner }) {
     }
   }
 
+  const setPresenting = async (group) => {
+    if (!isOwner) { alert('僅老師可設定報告組'); return }
+    if (!group || String(group).trim() === '') { alert('請輸入有效的組別 ID（請保留前置零）'); return }
+    try {
+      await updateDoc(doc(db, 'classes', classId), { presentingGroupId: String(group).trim() })
+    } catch (err) {
+      console.error('設定報告組錯誤：', err)
+    }
+  }
+
+  const endPresenting = async () => {
+    if (!isOwner) { alert('僅老師可結束報告'); return }
+    try {
+      await updateDoc(doc(db, 'classes', classId), { presentingGroupId: null })
+    } catch (err) {
+      console.error('結束報告錯誤：', err)
+    }
+  }
+
   return (
     <div style={{ padding: 20 }}>
       <h2>即時舉手名單</h2>
@@ -85,6 +120,23 @@ export default function HandsMonitor({ classId, isOwner }) {
         <>
           <div style={{ marginBottom: 12 }}>
             <button onClick={handleResetAll}>全部重置</button>
+          </div>
+
+          <div style={{ marginBottom: 12, padding: 8, border: '1px solid #f0ad4e', background: '#fffaf0' }}>
+            <strong>管理報告組（老師）</strong>
+            <div style={{ marginTop: 8 }}>
+              <div style={{ marginBottom: 8 }}>
+                <span style={{ marginRight: 8 }}>目前報告組：</span>
+                <strong>{presentingGroup || '無'}</strong>
+                {presentingGroup && <button style={{ marginLeft: 12 }} onClick={endPresenting}>結束報告</button>}
+              </div>
+              <label style={{ marginRight: 8 }}>設為報告組（請保留前置零，例如 04）：</label>
+              <input id="presenting-group-input" type="text" style={{ width: 80, marginRight: 12 }} />
+              <button onClick={() => {
+                const g = document.getElementById('presenting-group-input').value
+                setPresenting(g)
+              }}>設為報告組</button>
+            </div>
           </div>
 
           <div style={{ marginBottom: 12, padding: 8, border: '1px solid #ddd' }}>

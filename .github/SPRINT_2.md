@@ -157,97 +157,55 @@ Scenario 1: 首次選擇組別位置 (Happy Path)
 Scenario 2: 防止座位衝突 (Conflict Prevention)
 - Given (前提)：
   - 「第 1 組」已經選擇了座標 (行1, 列1)。
-- When (當操作發生時)：
+  - When (當操作發生時)：
   - 我（第 3 組）嘗試點擊已被佔用的 (行1, 列1) 時。
-- Then (預期結果)： 
+  - Then (預期結果)： 
   - 系統應顯示提示「此位置已被第 1 組選取」，且不允許我提交。介面應透過 onSnapshot 即時更新，將已被選取的格子設為 disabled。
 
 Scenario 3: 組員重複選擇處理 (Group Consensus)
 - Given (前提)：
   - 我的同組隊友已經在另一台手機選好了位置。
-- When (當操作發生時)：
+  - When (當操作發生時)：
   - 我稍後登入並選擇同一個班級與組別時。
-- Then (預期結果)：
+  - Then (預期結果)：
   - 系統應偵測到「第 3 組已設定位置」，自動跳過選擇頁面，直接進入儀表板並顯示已選定的座位。
 
 ---
 
-**相依註記 (2026-04-02)**
 
-- Issue #14 (登入時選擇座位) 為 Issue #8 (虛擬座位表介面) 的前置需求。完成 #14 可確保 #8 的視覺化功能能正確呈現真實座位資料。
 
----
+  ### Issue #28: 老師: 指定報告組別
+  - State: OPEN
+  - Labels: Sprint 2
+  - URL: https://github.com/jitsungwu/sa2026/issues/28
 
-## Implementation Details — Issue #2: Excel 匯入規格與驗證
+  身為 授課教師，我想要 在系統中指定特定組別進行報告，因此我可以 讓報告組別可以給回饋的組別分數。
 
-以下為本次開發（Issue #2）確認之最終需求與技術驗證規則，請以此作為前後端實作與測試依據。
+  驗收條件 (Acceptance Criteria)
+  Scenario 1：手動指定報告組別 (Manual Selection)
+  - Given (前提)： 老師已登入並選擇班級 (issue #3 )
+  - When (當操作發生時)： 老師選擇組別 (如:04)，並點擊「設為報告組」按鈕。
+  - Then (預期結果)：
+    - Firestore 中的 `classes/[classId]` 狀態應更新 `presentingGroupId: "04"`。
+    - 第四組的畫面應該切換到報告組畫面，並可以給舉手組別分數 (issue #7 )
 
-### 核心決議（已確認）
-- 支援檔案類型：僅支援 `.xls`（處理第一張工作表，index 0）。
-- 組號處理：保留原字串（例如 "01"），不可自動轉為數字。若檔案出現重複 `groupId`（相同字串出現多次），視為錯誤並停止匯入（錯誤碼：`DUPLICATE_GROUP`）。
-- 學號格式：必須為 9 位數字（正則：`^\d{9}$`）；不符合視為錯誤並停止匯入（錯誤碼：`INVALID_ACCOUNT`）。
-- 成員數一致性：每個 group header 的宣告人數（Col E）必須等於實際解析到的學生數；若不相符，停止匯入並回報錯誤（錯誤碼：`COUNT_MISMATCH`）。
-- 既有學生處理：若解析到的學生（相同學號）已存在於目標 class，視為錯誤並停止匯入（錯誤碼：`DUPLICATE_ACCOUNT`）。
-- 上傳流程：在實際匯入前，必須提供「解析預覽」頁面，顯示解析後的 groups、students、以及 `errors` / `warnings`；若 `errors` 非空，匯入按鈕需被禁用。
+  Scenario 2：老師切換報告組別
+  - Given (前提)： 第 04 組已完成報告。
+  - When (當操作發生時)： 老師選擇組別 (如:05)，並點擊「設為報告組」按鈕。
+  - Then (預期結果)：
+    - Firestore 中的 `classes/[classId]` 狀態應更新 `presentingGroupId: "05"`。
+    - 第五組的畫面應該切換到報告組畫面，並可以給舉手組別分數 (issue #7 )
+    - 第四組的畫面應該恢復到可以舉手的畫面 (issue #17)
 
-### 解析規則（逐列處理）
-- 讀取第一張工作表，從第一列向下掃描。對每一列，取得欄位值：ColA、ColB、ColD、ColE（以 Excel 的 A/B/D/E 欄位為準）。
-- Group Header 判斷：若 `trim(ColA).length <= 2` 且 `ColE` 有數字值，則此列為 group header：
-  - `groupId` = 原始 `trim(ColA)`（字串）
-  - `declaredCount` = parseInt(ColE)
-  - 設定 `currentGroup = groupId`
-- Student Row 判斷：若 `ColA` 符合正則 `^\d{9}$`，則為學生資料列：
-  - 建立 student 物件：`{ account: ColA, name: ColB, major: ColD, row: <excel-row-number> }`
-  - 將 student 加入 `currentGroup` 的 student 清單。
-- 其他列：視為忽略列（會在 preview 顯示為 warning），但不會影響 group 資料結構。
+  Scenario 3：結束報告
+  - Given (前提)： 第 04 組已完成報告。
+  - When (當操作發生時)： 老師點擊「結束報告」。
+  - Then (預期結果)：
+    - Firestore 的 `presentingGroupId` 應改回 `null`。
+    - 所有組別的介面應恢復恢復到可以舉手的畫面 (issue #17)
 
-注意：若在遇到任何 student row 時尚未出現 `currentGroup`（也就是檔案先出現學生列），視為格式錯誤並停止解析（錯誤碼：`MISSING_GROUP_HEADER`）。
-
-### 驗證邏輯（Preview 階段與伺服器端重驗證）
-- 在 Preview 階段執行下列檢查（若有任何一項 fail，加入 `errors` 並禁止匯入）：
-  1. `groupId` 重複檢查：若相同 `groupId` 出現多個 group header，回報 `DUPLICATE_GROUP`。
-  2. 學號格式檢查：每個 student.account 必須符合 `^\d{9}$`，否則 `INVALID_ACCOUNT`。
-  3. 既有學生檢查：向服務端查詢目標 class 是否已含該 account；若存在，回報 `DUPLICATE_ACCOUNT`（包含該 row 與 account）。
-  4. 成員數一致性：對每個 group, 若 `parsedCount !== declaredCount`，回報 `COUNT_MISMATCH`（包含 declared / parsed）。
-- 伺服器端匯入 API 在真正寫入資料前必須重新執行相同驗證，避免 TOCTOU 問題（race condition）。
-
-### 錯誤代碼範例與 API 回應格式
-- 失敗回應範例：
-```
-{
-  "status": "error",
-  "code": "IMPORT_VALIDATION_FAILED",
-  "errors": [
-    {"type":"DUPLICATE_GROUP","message":"groupId '01' 出現多次"},
-    {"row":12,"type":"DUPLICATE_ACCOUNT","message":"學號 413401194 已存在於 class-A"},
-    {"group":"02","type":"COUNT_MISMATCH","declared":5,"parsed":4}
-  ]
-}
-```
-- 成功回應範例（匯入完成）：
-```
-{
-  "status":"ok",
-  "importedGroups":2,
-  "importedStudents":10
-}
-```
-
-### Preview UI 要求
-- 上傳後顯示解析預覽頁面：列出每個 `groupId` 的 `declaredCount`、`parsedCount`、以及該 group 的 `students`（含原始列號）。
-- 顯示 `errors`（紅）與 `warnings`（黃）；若 `errors` 非空，禁用「確認匯入」按鈕並顯示錯誤摘要。
-- 若使用者在 preview 同意並按下「確認匯入」，前端呼叫匯入 API，API 再次驗證並執行寫入。
-
-### 邊界情況（測試清單）
-- 檔案格式錯誤（非 `.xls` 或損毀）。
-- 檔案中先出現 student rows（缺少 group header）。
-- 重複 `groupId`（應報錯）。
-- 任一 `student.account` 非 9 位數字（應報錯）。
-- `declaredCount` 與 parsed 不符（應報錯）。
-- 解析到已在 class 中存在的學號（應報錯）。
-- 空白列或註解列應被忽略並在 preview 顯示為 warning。
-
----
-
-請確認上述內容無誤；我確認後會繼續建立解析器的初始實作與單元測試範本。
-
+  補充說明
+  - `currentGroup` 為系統中用於處理學生「舉手加分」的欄位，與本 issue 的 `presentingGroupId`（指定正在報告的組別）用途不同，請勿混用。
+  - 組別 ID 將由數字改為字串處理，並保留前置零以確保排序一致性（例如 `"04"`、`"10"`），避免字串排序時 `"10"` 在 `"2"` 之前的狀況。
+  - 僅授權的老師（Teacher role）可以設定或變更 `presentingGroupId`；請在 Firestore Security Rules 或 API 層落實權限檢查以防止非授權寫入。
+  - 前端應使用 `onSnapshot` 監聽 `classes/{classId}.presentingGroupId` 的變更，並在變更時即時切換報告畫面或還原為舉手畫面。
