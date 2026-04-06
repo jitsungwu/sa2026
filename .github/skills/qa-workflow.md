@@ -12,6 +12,12 @@
   - **禁止** 在測試腳本中使用 `connectFirestoreEmulator` 或 `connectAuthEmulator`。
   - 測試必須指向雲端開發環境 (Cloud Staging) 或使用純 Mock Data。
 
+### 🔐 Test Accounts
+- 測試帳號清單參考：[`e2e/TEST_ACCOUNTS.md`](../../e2e/TEST_ACCOUNTS.md)
+- 帳號數據來源：[`.github/Group_list_2026-04-04(demo).xlsx`](.github/Group_list_2026-04-04(demo).xlsx)
+- 環境變數：`.env.local` 中定義 `TEST_CLASS_ID`、`TEST_STUDENT_ACCOUNT`、`TEST_STUDENT_GROUP_ID`
+- ⚠️ **重要**：僅使用已完成 signup 且記錄在案的帳號進行測試，避免測試數據汙染
+
 ---
 
 ## [Execution Flow]
