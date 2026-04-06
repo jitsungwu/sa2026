@@ -48,14 +48,14 @@ Scenario 1：成功解析並匯入階層式名單
 
 接受條件
 
-Scenario 1: 設定組長
+Scenario 1: 設定評分者
 - Given 報告組成員已登入，而且老師已經設定報告組別
-- When 報告組別同學可以看到「我是組長」的按鈕
-- Then 第一位按下「我是組長」的同學成為組長，負責給分。
+- When 報告組別同學可以看到「我負責評分」的按鈕
+- Then 第一位按下「我負責評分」的同學負責給分。
 
 Scenario 2:  給發問組分數
-- Given 報告組已經設定組長
-- When 組長可以看到同學舉手，報告組別依順序給發問組分數( 0–3 )並送出
+- Given 報告組已經設定評分者
+- When 評分者可以看到同學舉手，評分者依順序給發問組分數( 0–3 )並送出
 - Then 系統新增 `participation_logs`（含 `classId, group, points, timestamp, handRef?, givenBy`）並回傳 200；Scoreboard 在可見時段反映分數變動。
 
 Scenario 3: 非組長送分
@@ -64,8 +64,8 @@ Scenario 3: 非組長送分
 - Then 回傳 403 + { error: "非報告組組長" }。
 
 Scenario 4: 分數超範圍 
-- Given 分數超範圍
-- When 發出請求
+- Given 分數超範圍 ( 0–3 )
+- When 發出請求 (如:5分)
 - Then 回傳 400 + { error: "分數超範圍" }。
 
 ---
