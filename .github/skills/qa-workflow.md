@@ -12,6 +12,25 @@
   - **禁止** 在測試腳本中使用 `connectFirestoreEmulator` 或 `connectAuthEmulator`。
   - 測試必須指向雲端開發環境 (Cloud Staging) 或使用純 Mock Data。
 
+### 🔐 Test Accounts
+- 測試帳號清單參考：[`e2e/TEST_ACCOUNTS.md`](../../e2e/TEST_ACCOUNTS.md)
+- 帳號數據來源：[`.github/Group_list_2026-04-04(demo).xlsx`](.github/Group_list_2026-04-04(demo).xlsx)
+- 環境變數：`.env.local` 中定義 `TEST_CLASS_ID`、`TEST_STUDENT_ACCOUNT`、`TEST_STUDENT_GROUP_ID`
+- ⚠️ **重要**：僅使用已完成 signup 且記錄在案的帳號進行測試，避免測試數據汙染
+
+### 📋 Test Account Pool Management
+- **帳號池位置**: [e2e/test-accounts.json](../../e2e/test-accounts.json)
+- **結構**:
+  - `disponible`: 可用的帳號陣列
+  - `used`: 已使用過的帳號歷史紀錄
+- **帳號不足時的行為**:
+  - ✅ **正確做法**: 測試應該 **SKIP** 而不是失敗 (FAIL)
+  - 例外: 僅當帳號池真的用盡時，才暫停測試
+  - 確保帳號池中至少有 **4+ 可用帳號**
+- **帳號復用策略**:
+  - 建議定期清理 `test-accounts.json`，將已測試帳號移回 `disponible`
+  - 或增加更多測試帳號到 Excel 檔案中，重新執行 import script
+
 ---
 
 ## [Execution Flow]

@@ -1,0 +1,74 @@
+{
+  "disponible": [
+    {
+      "account": "413000009",
+      "classId": "demo",
+      "groupId": "06",
+      "status": "available"
+    },
+    {
+      "account": "413000010",
+      "classId": "demo",
+      "groupId": "04",
+      "status": "available"
+    }
+  ],
+  "used": [
+    {
+      "account": "413000001",
+      "classId": "demo",
+      "groupId": "01",
+      "status": "used",
+      "usedAt": "2026-04-06T00:00:00Z"
+    },
+    {
+      "account": "413000002",
+      "classId": "demo",
+      "groupId": "02",
+      "status": "used",
+      "usedAt": "2026-04-06T04:17:36.237Z"
+    },
+    {
+      "account": "413000003",
+      "classId": "demo",
+      "groupId": "01",
+      "status": "used",
+      "usedAt": "2026-04-06T04:17:40.751Z"
+    },
+    {
+      "account": "413000004",
+      "classId": "demo",
+      "groupId": "05",
+      "status": "used",
+      "usedAt": "2026-04-06T04:18:12.628Z"
+    },
+    {
+      "account": "413000005",
+      "classId": "demo",
+      "groupId": "04",
+      "status": "used",
+      "usedAt": "2026-04-06T04:18:46.452Z"
+    },
+    {
+      "account": "413000006",
+      "classId": "demo",
+      "groupId": "05",
+      "status": "used",
+      "usedAt": "2026-04-06T04:50:00.000Z"
+    },
+    {
+      "account": "413000007",
+      "classId": "demo",
+      "groupId": "02",
+      "status": "available",
+      "usedAt": "2026-04-06T05:14:43.549Z"
+    },
+    {
+      "account": "413000008",
+      "classId": "demo",
+      "groupId": "03",
+      "status": "available",
+      "usedAt": "2026-04-06T05:17:58.981Z"
+    }
+  ]
+}

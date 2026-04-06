@@ -2,8 +2,10 @@ import { test, expect } from './test-fixtures'
 
 test.describe('Issue #24: Student Login', () => {
   const base = process.env.BASE_URL || 'http://localhost:3000'
-  const validStudentAccount = process.env.STUDENT_ACCOUNT || '123456789'
-  const validClassId = process.env.STUDENT_CLASS || 'class-A'
+  // Use environment variables or skip tests if not configured
+  // Test accounts should come from test-accounts.json pool
+  const validStudentAccount = process.env.STUDENT_ACCOUNT
+  const validClassId = process.env.STUDENT_CLASS || 'demo'
   const invalidAccount = '12345'
   const invalidClassId = 'invalid-class'
 

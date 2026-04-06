@@ -1,5 +1,5 @@
 import { db } from '../../../../firebaseClient'
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
 
 /**
  * POST /api/auth/validate-student-account
@@ -26,29 +26,25 @@ export async function POST(request) {
       )
     }
 
-    // 查詢該學號在哪個班級中已經存在
-    let foundClassId = null
-    let foundGroupId = null
+    // 查詢全域 students 文檔
+    const studentDocRef = doc(db, 'students', account)
+    const studentSnap = await getDoc(studentDocRef)
 
-    const classesRef = collection(db, 'classes')
-    const classSnap = await getDocs(classesRef)
-
-    for (const classDoc of classSnap.docs) {
-      const classId = classDoc.id
-      const classStudentRef = doc(db, `classes/${classId}/students`, account)
-      const classStudentSnap = await getDoc(classStudentRef)
-
-      if (classStudentSnap.exists()) {
-        foundClassId = classId
-        foundGroupId = classStudentSnap.data().groupId
-        break
-      }
-    }
-
-    if (!foundClassId) {
+    if (!studentSnap.exists()) {
       return Response.json(
         { success: false, error: '帳號不存在於任何班級中，請聯絡老師' },
         { status: 404 }
+      )
+    }
+
+    const studentData = studentSnap.data()
+    const foundClassId = studentData.classId
+    const foundGroupId = studentData.groupId
+
+    if (!foundClassId || !foundGroupId) {
+      return Response.json(
+        { success: false, error: '帳號班級資訊不完整' },
+        { status: 400 }
       )
     }
 
