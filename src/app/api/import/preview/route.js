@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { parsePreview } from '../../../../../src/lib/xlsImporter.js'
-import { db } from '../../../../../src/firebaseClient.js'
+import { parsePreview } from '../../../../lib/xlsImporter.js'
+import { db } from '../../../../firebaseClient'
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore'
 
 export async function POST(req) {

@@ -81,6 +81,11 @@ export default function SeatSelectionPage() {
 
       // Success: seat reserved. UI will update via onSnapshot; navigate to dashboard
       setMessage({ type: 'success', text: '座位已選定，正在導向儀表板…' })
+      
+      // Update localStorage to reflect seat selection
+      const updatedStudent = { ...student, seatSelected: true }
+      localStorage.setItem('studentAuth', JSON.stringify(updatedStudent))
+      
       setTimeout(() => router.push(`/class/${classId}/dashboard`), 800)
     } catch (e) {
       console.error(e)
@@ -144,7 +149,7 @@ export default function SeatSelectionPage() {
                       fontWeight: 600
                     }}
                   >
-                    {occupant ? `第 ${String(occupant).padStart(2, '0')} 組` : `第 ${r} 排`}
+                    {occupant ? `第 ${String(occupant).padStart(2, '0')} 組` : `${zone.label}第 ${r} 排`}
                   </button>
                 )
               })}

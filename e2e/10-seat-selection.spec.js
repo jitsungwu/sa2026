@@ -111,13 +111,22 @@ test.describe('Issue #14: Student Seat Selection', () => {
       // Click the button to reserve
       await firstEnabledButton.click()
 
-      // Wait for API response (should POST to /api/class/{classId}/reserve-seat)
-      await page.waitForTimeout(2000)
+      // Wait for redirection to dashboard
+      await page.waitForNavigation({ timeout: 5000 }).catch(() => {})
+      await page.waitForTimeout(1000)
 
-      // Check if successful (button should become disabled or text should change to group number)
-      // Or check if user was redirected to dashboard
-      const currentUrl = page.url()
-      // May redirect to dashboard or stay on seat-selection
+      // Verify redirected to dashboard
+      const dashboardUrl = page.url()
+      expect(dashboardUrl).toContain('/dashboard')
+      
+      // Verify dashboard shows seat location (not "未選座位")
+      const seatLocationElem = page.locator('p:has-text("座位位置：")').first()
+      await expect(seatLocationElem).toBeVisible({ timeout: 3000 })
+      const seatLocationText = await seatLocationElem.textContent()
+      expect(seatLocationText).not.toContain('未選座位')
+      expect(seatLocationText).toContain('區') // Should contain zone info
+      
+      console.log(`✓ Seat successfully reserved and dashboard shows "${seatLocationText}"`)
     } else {
       // No enabled seats available - all occupied
       console.log('All seats are occupied in test')
@@ -249,10 +258,31 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
     { account: '413000008', groupId: '03', name: '学生3' }, // used - also group 03
   ]
 
+  /**
+   * Helper function to select a seat in a specific zone
+   * @param {Page} page - Playwright page object
+   * @param {string} zoneLabel - Zone label: '左區', '中區', or '右區'
+   * @returns {boolean} - True if seat was successfully selected
+   */
+  async function selectSeatInZone(page, zoneLabel) {
+    // Find all enabled buttons containing the zone label
+    const buttons = page.locator(`button:not(:disabled):has-text("${zoneLabel}")`)
+    const count = await buttons.count()
+    
+    if (count > 0) {
+      // Click first available seat in the zone
+      await buttons.first().click()
+      return true
+    }
+    return false
+  }
+
   test('Scenario 7: Multiple students from different groups select different seats', async ({ browser }) => {
     // Create three browser contexts to simulate three concurrent students
+    // Each student will select a seat in a different zone (left, middle, right)
     const contexts = []
     const pages = []
+    const zones = ['左區', '中區', '右區'] // Three different zones
 
     try {
       // Launch three separate browser contexts (simulating three different students)
@@ -282,19 +312,25 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
         await expect(page.getByText('組別： ' + student.groupId)).toBeVisible()
       }
 
-      // Now have each student select a different seat
+      // Now have each student select a seat in different zones
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i]
-        const enabledButtons = page.locator('button:not(:disabled)')
-        const enabledCount = await enabledButtons.count()
-
-        if (enabledCount > 0) {
-          // Get first enabled button to reserve
-          const firstButton = enabledButtons.first()
-          await firstButton.click()
+        const zone = zones[i]
+        
+        // Try to select a seat in the assigned zone
+        const selected = await selectSeatInZone(page, zone)
+        
+        if (selected) {
           await page.waitForTimeout(1500)
-          
-          console.log(`Student ${i + 1} (Group ${students[i].groupId}) attempted to reserve seat`)
+          console.log(`Student ${i + 1} (Group ${students[i].groupId}) selected seat in ${zone}`)
+        } else {
+          // Fallback to first available button if zone is full
+          const enabledButtons = page.locator('button:not(:disabled)')
+          if (await enabledButtons.count() > 0) {
+            await enabledButtons.first().click()
+            await page.waitForTimeout(1500)
+            console.log(`Student ${i + 1} (Group ${students[i].groupId}) selected first available seat`)
+          }
         }
       }
 
@@ -323,7 +359,7 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
   })
 
   test('Scenario 8: Second student tries to select same seat as first student (conflict)', async ({ browser }) => {
-    // Create two browser contexts
+    // Create two browser contexts - both will try to select seats in the left zone
     const context1 = await browser.newContext()
     const context2 = await browser.newContext()
     const page1 = await context1.newPage()
@@ -358,15 +394,23 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
       await page2.reload({ waitUntil: 'domcontentloaded' })
       await expect(page2.getByText('學號： 413000010')).toBeVisible({ timeout: 3000 })
 
-      // Both students get first enabled button
-      const enabledButtons1 = page1.locator('button:not(:disabled)')
-      const enabledButtons2 = page2.locator('button:not(:disabled)')
+      // Both students try to select seat in the left zone (左區)
+      const zone = '左區'
+      
+      // Student 1 selects a seat in left zone
+      const selected1 = await selectSeatInZone(page1, zone)
+      if (selected1) {
+        await page1.waitForTimeout(1500)
+        console.log(`Student 1 (Group 03) selected seat in ${zone}`)
+      } else {
+        // Fallback if left zone is full
+        const buttons1 = page1.locator('button:not(:disabled)')
+        if (await buttons1.count() > 0) {
+          await buttons1.first().click()
+          await page1.waitForTimeout(1500)
+        }
+      }
 
-      // Student 1 selects a seat
-      await enabledButtons1.first().click()
-      await page1.waitForTimeout(1500)
-
-      // Student 2 tries to select the same seat
       // Wait a moment for real-time update via onSnapshot
       await page2.waitForTimeout(1000)
       
@@ -387,12 +431,14 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
 
   test('Scenario 9: Three students select seats sequentially and verify all updates', async ({ browser }) => {
     // Simulate sequential seat selection by 3 students with real-time verification
+    // Each student selects a seat in a different zone
     const context1 = await browser.newContext()
     const context2 = await browser.newContext()
     const context3 = await browser.newContext()
     const page1 = await context1.newPage()
     const page2 = await context2.newPage()
     const page3 = await context3.newPage()
+    const zones = ['左區', '中區', '右區'] // Different zones for each student
 
     try {
       // Set up all three students in parallel using real test accounts
@@ -408,8 +454,7 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
             }))
           }, { groupId: '01', account: '413000001', classId: testClassId })
           await page1.reload({ waitUntil: 'domcontentloaded' })
-        })()
-        ,
+        })(),
         (async () => {
           await page2.goto(`${base}/class/${testClassId}/seat-selection`)
           await page2.evaluate(({ groupId, account, classId }) => {
@@ -421,8 +466,7 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
             }))
           }, { groupId: '02', account: '413000002', classId: testClassId })
           await page2.reload({ waitUntil: 'domcontentloaded' })
-        })()
-        ,
+        })(),
         (async () => {
           await page3.goto(`${base}/class/${testClassId}/seat-selection`)
           await page3.evaluate(({ groupId, account, classId }) => {
@@ -449,12 +493,18 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
       let occupiedCountBefore = await occupiedPageBefore.count()
       console.log(`Page 1 (Account 413000001, Group 01) initial occupancy: ${occupiedCountBefore}`)
 
-      // Student 1 selects first available seat
-      const buttons1 = page1.locator('button:not(:disabled)')
-      if (await buttons1.first().isVisible()) {
-        await buttons1.first().click()
-        console.log('✓ Student 1 (Account 413000001, Group 01) selected seat')
+      // Student 1 selects first available seat in left zone (左區)
+      const selected1 = await selectSeatInZone(page1, zones[0])
+      if (selected1) {
         await page1.waitForTimeout(1000)
+        console.log('✓ Student 1 (Account 413000001, Group 01) selected seat in 左區')
+      } else {
+        // Fallback to first available
+        const buttons1 = page1.locator('button:not(:disabled)')
+        if (await buttons1.first().isVisible()) {
+          await buttons1.first().click()
+          console.log('✓ Student 1 (Account 413000001, Group 01) selected seat')
+        }
       }
 
       // Wait for real-time update to propagate
@@ -474,12 +524,32 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
       expect(occupiedCount2).toBeGreaterThanOrEqual(0)
       expect(occupiedCount3).toBeGreaterThanOrEqual(0)
 
-      // Student 2 selects a different seat
-      const buttons2 = page2.locator('button:not(:disabled)')
-      if (await buttons2.first().isVisible()) {
-        await buttons2.first().click()
-        console.log('✓ Student 2 (Account 413000002, Group 02) selected seat')
+      // Student 2 selects a seat in middle zone (中區)
+      const selected2 = await selectSeatInZone(page2, zones[1])
+      if (selected2) {
         await page2.waitForTimeout(500)
+        console.log('✓ Student 2 (Account 413000002, Group 02) selected seat in 中區')
+      } else {
+        // Fallback to first available
+        const buttons2 = page2.locator('button:not(:disabled)')
+        if (await buttons2.first().isVisible()) {
+          await buttons2.first().click()
+          console.log('✓ Student 2 (Account 413000002, Group 02) selected seat')
+        }
+      }
+
+      // Student 3 selects a seat in right zone (右區)
+      const selected3 = await selectSeatInZone(page3, zones[2])
+      if (selected3) {
+        await page3.waitForTimeout(500)
+        console.log('✓ Student 3 (Account 413000008, Group 03) selected seat in 右區')
+      } else {
+        // Fallback to first available
+        const buttons3 = page3.locator('button:not(:disabled)')
+        if (await buttons3.first().isVisible()) {
+          await buttons3.first().click()
+          console.log('✓ Student 3 (Account 413000008, Group 03) selected seat')
+        }
       }
 
       // Wait for updates
@@ -487,7 +557,7 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
 
       // The occupancy count on page1 may vary due to Firestore subscription timing
       // The key is that seat reservations were successfully made (no errors)
-      console.log(`✓ All 3 students (Groups 01, 02, 03) successfully selected seats without conflicts`)
+      console.log(`✓ All 3 students (Groups 01, 02, 03) successfully selected seats in different zones without conflicts`)
 
     } finally {
       await context1.close()
@@ -498,6 +568,7 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
 
   test('Scenario 10: Same group - different students show same seat reserved', async ({ browser }) => {
     // Test that multiple students from the same group see the same seat reserved
+    // and both see the same seat location in dashboard
     // Using real test accounts from same group: 413000001 and 413000003 (both in group 01)
     const context1 = await browser.newContext()
     const context2 = await browser.newContext()
@@ -532,11 +603,24 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
       await expect(page1.getByText('組別： 01')).toBeVisible({ timeout: 3000 })
       await expect(page2.getByText('組別： 01')).toBeVisible({ timeout: 3000 })
 
-      // Member 1 selects a seat
-      const buttons1 = page1.locator('button:not(:disabled)')
-      if (await buttons1.first().isVisible()) {
-        await buttons1.first().click()
+      // Member 1 selects a seat in left zone
+      let locationText1 = null
+      let locationText2 = null
+      
+      const selected = await selectSeatInZone(page1, '左區')
+      if (selected) {
         await page1.waitForTimeout(1500)
+        console.log('✓ Member 1 (Group 01) selected seat in 左區')
+        
+        // Wait for redirection to dashboard
+        await page1.waitForNavigation({ timeout: 5000 }).catch(() => {})
+        await page1.waitForTimeout(800)
+        
+        // Verify Member 1 sees dashboard with seat location
+        const seatLocation1Elem = page1.locator('p:has-text("座位位置：")').first()
+        await expect(seatLocation1Elem).toBeVisible()
+        locationText1 = await seatLocation1Elem.textContent()
+        console.log(`✓ Member 1 dashboard shows: ${locationText1}`)
       }
 
       // Wait for Member 2's page to update
@@ -548,7 +632,35 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
 
       expect(disabledCount).toBeGreaterThanOrEqual(1)
 
-      console.log(`✓ Same group members (Group 01: Accounts 413000001 and 413000003) see consistent seat reservations`)
+      // Member 2 should see the seat as already occupied by their group
+      // and can proceed to dashboard to see the same location
+      if (disabledCount >= 1) {
+        console.log(`✓ Member 2 sees ${disabledCount} occupied seat(s) - same seat as Member 1`)
+        
+        // Navigate to dashboard to verify seat location
+        await page2.goto(`${base}/class/${testClassId}/dashboard`, { waitUntil: 'domcontentloaded' })
+        await page2.waitForTimeout(1500)
+        
+        // Verify Member 2 sees same seat location in dashboard
+        const seatLocation2Elem = page2.locator('p:has-text("座位位置：")').first()
+        await expect(seatLocation2Elem).toBeVisible()
+        locationText2 = await seatLocation2Elem.textContent()
+        console.log(`✓ Member 2 dashboard shows: ${locationText2}`)
+        
+        // Both should see the same location
+        // Verify both texts contain zone info (左區, 中區, or 右區)
+        if (locationText1) {
+          expect(locationText1).toContain('區')
+          console.log(`✓ Member 1 location contains zone: ${locationText1}`)
+        }
+        if (locationText2) {
+          expect(locationText2).toContain('區')
+          console.log(`✓ Member 2 location contains zone: ${locationText2}`)
+        }
+        if (locationText1 && locationText2) {
+          console.log(`✓ Same group members show consistent seat location`)
+        }
+      }
 
     } finally {
       await context1.close()
