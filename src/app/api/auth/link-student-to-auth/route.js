@@ -1,5 +1,5 @@
 import { db } from '../../../../firebaseClient'
-import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 
 /**
  * POST /api/auth/link-student-to-auth
@@ -34,31 +34,26 @@ export async function POST(request) {
       )
     }
 
-    // 查詢該學號在哪個班級中
-    let foundClassId = null
-    let foundGroupId = null
-    let foundClassStudentData = null
+    // 查詢全域 students 文檔
+    const globalStudentRef = doc(db, 'students', account)
+    const globalSnap = await getDoc(globalStudentRef)
 
-    const classesRef = collection(db, 'classes')
-    const classSnap = await getDocs(classesRef)
-
-    for (const classDoc of classSnap.docs) {
-      const classId = classDoc.id
-      const classStudentRef = doc(db, `classes/${classId}/students`, account)
-      const classStudentSnap = await getDoc(classStudentRef)
-
-      if (classStudentSnap.exists()) {
-        foundClassId = classId
-        foundGroupId = classStudentSnap.data().groupId
-        foundClassStudentData = classStudentSnap.data()
-        break
-      }
-    }
-
-    if (!foundClassId) {
+    if (!globalSnap.exists()) {
       return Response.json(
         { success: false, error: '帳號不存在於任何班級中' },
         { status: 404 }
+      )
+    }
+
+    const globalStudentData = globalSnap.data()
+    const foundClassId = globalStudentData.classId
+    const foundGroupId = globalStudentData.groupId
+    const foundClassStudentData = globalStudentData
+
+    if (!foundClassId) {
+      return Response.json(
+        { success: false, error: '帳號班級資訊不完整' },
+        { status: 400 }
       )
     }
 
@@ -74,8 +69,7 @@ export async function POST(request) {
 
     // 建立或更新全域學生文檔
     const email = `${account}@cloud.fju.edu.tw`
-    const globalStudentRef = doc(db, 'students', account)
-    const studentData = {
+    const linkedStudentData = {
       account,
       name: foundClassStudentData.name || '',
       email,
@@ -85,7 +79,7 @@ export async function POST(request) {
       passwordSetAt: new Date().toISOString(),
     }
 
-    await setDoc(globalStudentRef, studentData)
+    await setDoc(globalStudentRef, linkedStudentData)
 
     return Response.json({
       success: true,

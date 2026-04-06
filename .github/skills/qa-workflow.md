@@ -18,6 +18,19 @@
 - 環境變數：`.env.local` 中定義 `TEST_CLASS_ID`、`TEST_STUDENT_ACCOUNT`、`TEST_STUDENT_GROUP_ID`
 - ⚠️ **重要**：僅使用已完成 signup 且記錄在案的帳號進行測試，避免測試數據汙染
 
+### 📋 Test Account Pool Management
+- **帳號池位置**: [e2e/test-accounts.json](../../e2e/test-accounts.json)
+- **結構**:
+  - `disponible`: 可用的帳號陣列
+  - `used`: 已使用過的帳號歷史紀錄
+- **帳號不足時的行為**:
+  - ✅ **正確做法**: 測試應該 **SKIP** 而不是失敗 (FAIL)
+  - 例外: 僅當帳號池真的用盡時，才暫停測試
+  - 確保帳號池中至少有 **4+ 可用帳號**
+- **帳號復用策略**:
+  - 建議定期清理 `test-accounts.json`，將已測試帳號移回 `disponible`
+  - 或增加更多測試帳號到 Excel 檔案中，重新執行 import script
+
 ---
 
 ## [Execution Flow]

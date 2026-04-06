@@ -1,5 +1,5 @@
 import { db } from '../../../../firebaseClient'
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
 
 /**
  * POST /api/auth/student-signup
@@ -29,37 +29,30 @@ export async function POST(request) {
       )
     }
 
-    // 2. 查詢該學號在哪個班級中已經存在
-    let foundClassId = null
-    let foundGroupId = null
+    // 2. 查詢全域 students 文檔
+    const globalStudentRef = doc(db, 'students', account)
+    const globalSnap = await getDoc(globalStudentRef)
 
-    const classesRef = collection(db, 'classes')
-    const classSnap = await getDocs(classesRef)
-
-    for (const classDoc of classSnap.docs) {
-      const classId = classDoc.id
-      const classStudentRef = doc(db, `classes/${classId}/students`, account)
-      const classStudentSnap = await getDoc(classStudentRef)
-
-      if (classStudentSnap.exists()) {
-        foundClassId = classId
-        foundGroupId = classStudentSnap.data().groupId
-        break
-      }
-    }
-
-    if (!foundClassId) {
+    if (!globalSnap.exists()) {
       return Response.json(
         { success: false, error: '帳號不存在於任何班級中，請聯絡老師' },
         { status: 404 }
       )
     }
 
-    // 3. 檢查帳號是否已有 Firebase Auth 帳號（userId）
-    const globalStudentRef = doc(db, 'students', account)
-    const globalSnap = await getDoc(globalStudentRef)
+    const studentData = globalSnap.data()
+    const foundClassId = studentData.classId
+    const foundGroupId = studentData.groupId
 
-    if (globalSnap.exists() && globalSnap.data().userId) {
+    if (!foundClassId || !foundGroupId) {
+      return Response.json(
+        { success: false, error: '帳號班級資訊不完整' },
+        { status: 400 }
+      )
+    }
+
+    // 3. 檢查帳號是否已有 Firebase Auth 帳號（userId）
+    if (studentData.userId) {
       return Response.json(
         { success: false, error: '帳號已存在，請直接登入' },
         { status: 409 }

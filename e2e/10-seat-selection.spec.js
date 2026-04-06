@@ -3,7 +3,8 @@ import { test, expect } from './test-fixtures'
 test.describe('Issue #14: Student Seat Selection', () => {
   const base = process.env.BASE_URL || 'http://localhost:3000'
   const testClassId = process.env.TEST_CLASS_ID || 'demo'
-  const testStudentAccount = process.env.TEST_STUDENT_ACCOUNT || '123456789'
+  // Test account should come from test-accounts.json pool in real tests
+  const testStudentAccount = process.env.TEST_STUDENT_ACCOUNT || '413000001'
   const testGroupId = process.env.TEST_STUDENT_GROUP_ID || '1'
 
   /**

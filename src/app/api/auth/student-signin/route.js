@@ -3,12 +3,12 @@ import { doc, getDoc } from 'firebase/firestore'
 
 /**
  * POST /api/auth/student-signin
- * 驗證學生帳號是否屬於指定班級、檢查座位選擇狀態
+ * 驗證學生帳號、檢查座位選擇狀態（自動偵測班級）
  * 
- * 注意：password 驗證由 Firebase Authentication 處理，此 API 只驗證班級成員
+ * 注意：password 驗證由 Firebase Authentication 處理，此 API 只驗證帳號存在性
  * 
  * Request body:
- * { account: "123456789", classId: "demo" }
+ * { account: "123456789" }
  * 
  * Response:
  * { success: true, student: { account, name, groupId, classId, seatSelected } }
@@ -28,35 +28,31 @@ export async function POST(request) {
       )
     }
 
-    // 驗證班級 ID
-    if (!classId || classId.trim().length === 0) {
+    // 1. 查詢全域 students 文檔（不需要 classId，系統自動檢測）
+    const studentDocRef = doc(db, 'students', account)
+    const studentDocSnap = await getDoc(studentDocRef)
+
+    if (!studentDocSnap.exists()) {
       return Response.json(
-        { success: false, error: '班級代碼不能為空' },
-        { status: 400 }
+        { success: false, error: '帳號不存在' },
+        { status: 404 }
       )
     }
 
-    // 1. 查詢班級內的學生記錄確保帳號屬於該班級
-    const classStudentDocRef = doc(db, `classes/${classId}/students`, account)
-    const classStudentSnap = await getDoc(classStudentDocRef)
+    const studentData = studentDocSnap.data()
 
-    if (!classStudentSnap.exists()) {
+    // 2. 如果提供了 classId，驗證班級是否相符
+    if (classId && studentData.classId !== classId) {
       return Response.json(
         { success: false, error: '帳號不存在或班級不符' },
         { status: 404 }
       )
     }
 
-    const classStudentData = classStudentSnap.data()
-
-    // 2. 檢查全域 students 文檔
-    const studentDocRef = doc(db, 'students', account)
-    const studentDocSnap = await getDoc(studentDocRef)
-    const studentData = studentDocSnap.exists() ? studentDocSnap.data() : {}
-
     // 3. 檢查該班級的座位選擇狀態
-    const groupId = classStudentData.groupId
-    const layoutDocRef = doc(db, `classes/${classId}/layout`, 'grid')
+    const groupId = studentData.groupId
+    const detectedClassId = studentData.classId
+    const layoutDocRef = doc(db, `classes/${detectedClassId}/layout`, 'grid')
     const layoutSnap = await getDoc(layoutDocRef)
 
     let seatSelected = false
@@ -71,10 +67,10 @@ export async function POST(request) {
       success: true,
       student: {
         account,
-        name: classStudentData.name || studentData.name || '',
-        major: classStudentData.major || studentData.major || '',
+        name: studentData.name || '',
+        major: studentData.major || '',
         groupId,
-        classId,
+        classId: detectedClassId,
         seatSelected
       }
     })

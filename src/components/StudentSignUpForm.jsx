@@ -74,11 +74,6 @@ export default function StudentSignUpForm({ onClose, onSuccess }) {
       if (onSuccess) {
         onSuccess(updateData.student)
       }
-
-      // 2秒後自動返回登入頁面
-      setTimeout(() => {
-        onClose?.()
-      }, 2000)
     } catch (e) {
       setError(e?.message || String(e))
     } finally {
