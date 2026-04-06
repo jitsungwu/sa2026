@@ -39,7 +39,7 @@ export async function POST(request) {
 
     const studentData = studentDocSnap.data()
     const detectedClassId = studentData.classId
-    const groupId = studentData.groupId
+    const groupId = String(studentData.groupId).padStart(2, '0')
 
     // 如果提供了 classId，驗證班級是否相符
     if (classId && detectedClassId !== classId) {
@@ -57,7 +57,9 @@ export async function POST(request) {
     if (layoutSnap.exists()) {
       const layoutData = layoutSnap.data()
       seatSelected = Object.values(layoutData || {}).some(
-        row => Object.values(row || {}).some(seat => seat === groupId)
+        row => Object.values(row || {}).some(
+          seat => String(seat).padStart(2, '0') === groupId
+        )
       )
     }
 

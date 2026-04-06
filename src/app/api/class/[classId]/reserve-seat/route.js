@@ -1,4 +1,4 @@
-import { db } from '../../../../firebaseClient'
+import { db } from '../../../../../firebaseClient'
 import { doc, getDoc, runTransaction } from 'firebase/firestore'
 
 /**
