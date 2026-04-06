@@ -46,50 +46,8 @@ Scenario 1：成功解析並匯入階層式名單
 
 身為 報告組同學，我想要 在台上直接點選發問同學並給予 **0-3 分**，因此我可以 實質回饋對我們報告有幫助的建議。
 
-接受條件
-Scenario 1: 
-- Given 報告組成員登入於報告介面
-- When 選擇目標並輸入合法分數 0–3 並送出
-- Then 系統新增 `participation_logs`（含 `classId, group, points, timestamp, handRef?, givenBy`）並回傳 200；Scoreboard 在可見時段反映分數變動。
 
-Scenario 2:
-- Given 非報告組成員送分
-- When 發出請求
-- Then 回傳 403 + { error: "非報告組" }。
 
-Scenario 3: 
-- Given 分數超範圍
-- When 發出請求
-- Then 回傳 400 + { error: "分數超範圍" }。
-
-Scenario 4:
-- Given 相同 `handRef` 或相同 idempotency token 已處理
-
-### Issue #8: 學生（報告組）：虛擬座位表介面
-- State: OPEN
-- Labels: -
-- URL: https://github.com/jitsungwu/sa2026/issues/8
-
-身為 同學，我想要 在操作介面查看「虛擬座位表」，因此我可以 在小組分享時間知道其他組別的分布位置。
-Scenario 1: 視覺化呈現教室布局
-* Given (前提)： 
-  * 多個組別已完成座位選擇。
-  * 我正在「學生互動儀表板」點擊「查看座位圖」。
-* When (當操作發生時)：
-  * 頁面切換至網格視圖。
-* Then (預期結果)： 
-  * 系統應以網格形式呈現教室，且有人的格子必須顯示組號。
-
-Scenario 2: 例外狀況
-* Given (前提)： 
-  * 課程尚未啟動。
-  * 我正在「學生互動儀表板」點擊「查看座位圖」。
-* When (當操作發生時)： 
-  * 頁面切換至網格視圖。
-* Then (預期結果)：
-  * 系統應以回應「課程尚未啟動」。
-
----
 
 ### Issue #24: 學生：登入系統
 - State: OPEN
@@ -172,6 +130,51 @@ Scenario 3: 組員重複選擇處理 (Group Consensus)
 
 ---
 
+<<<<<<< HEAD
+=======
+
+
+  ### Issue #28: 老師: 指定報告組別
+  - State: OPEN
+  - Labels: Sprint 2
+  - URL: https://github.com/jitsungwu/sa2026/issues/28
+
+  身為 授課教師，我想要 在系統中指定特定組別進行報告，因此我可以 讓報告組別可以給回饋的組別分數。
+
+  驗收條件 (Acceptance Criteria)
+  Scenario 1：手動指定報告組別 (Manual Selection)
+  - Given (前提)： 老師已登入並選擇班級 (issue #3 )
+  - When (當操作發生時)： 老師選擇組別 (如:04)，並點擊「設為報告組」按鈕。
+  - Then (預期結果)：
+    - Firestore 中的 `classes/[classId]` 狀態應更新 `presentingGroupId: "04"`。
+    - 第四組的畫面應該切換到報告組畫面，並可以給舉手組別分數 (issue #7 )
+
+  Scenario 2：老師切換報告組別
+  - Given (前提)： 第 04 組已完成報告。
+  - When (當操作發生時)： 老師選擇組別 (如:05)，並點擊「設為報告組」按鈕。
+  - Then (預期結果)：
+    - Firestore 中的 `classes/[classId]` 狀態應更新 `presentingGroupId: "05"`。
+    - 第五組的畫面應該切換到報告組畫面，並可以給舉手組別分數 (issue #7 )
+    - 第四組的畫面應該恢復到可以舉手的畫面 (issue #17)
+
+  Scenario 3：結束報告
+  - Given (前提)： 第 04 組已完成報告。
+  - When (當操作發生時)： 老師點擊「結束報告」。
+  - Then (預期結果)：
+    - Firestore 的 `presentingGroupId` 應改回 `null`。
+    - 所有組別的介面應恢復恢復到可以舉手的畫面 (issue #17)
+
+  補充說明
+  - `currentGroup` 為系統中用於處理學生「舉手加分」的欄位，與本 issue 的 `presentingGroupId`（指定正在報告的組別）用途不同，請勿混用。
+  - 組別 ID 將由數字改為字串處理，並保留前置零以確保排序一致性（例如 `"04"`、`"10"`），避免字串排序時 `"10"` 在 `"2"` 之前的狀況。
+  - 僅授權的老師（Teacher role）可以設定或變更 `presentingGroupId`；請在 Firestore Security Rules 或 API 層落實權限檢查以防止非授權寫入。
+  - 前端應使用 `onSnapshot` 監聽 `classes/{classId}.presentingGroupId` 的變更，並在變更時即時切換報告畫面或還原為舉手畫面。
+
+
+
+
+**相依註記 (2026-04-02)**
+>>>>>>> 81d1942 (feat: Implement functionality for teachers to specify presenting groups and manage reporting sessions)
 
 
   ### Issue #28: 老師: 指定報告組別
