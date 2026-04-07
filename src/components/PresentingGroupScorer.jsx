@@ -107,7 +107,7 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
 
   return (
     <div style={{ marginTop: 16, padding: 12, backgroundColor: '#e7f3ff', borderRadius: 4, border: '1px solid #91d5ff' }}>
-      <h3 style={{ marginTop: 0, color: '#0050b3' }}>✍️ 給分介面</h3>
+      <h3 style={{ marginTop: 0, color: '#0050b3' }}>✍️ 給分介面 (評分者：{presentingScorerOwnerId})</h3>
 
       {/* Authorization check */}
       {studentAccount && presentingScorerOwnerId && studentAccount !== presentingScorerOwnerId && (

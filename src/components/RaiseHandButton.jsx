@@ -178,7 +178,7 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
           // Scorer has been assigned
           isUserInPresentingGroup() ? (
             <div style={{ color: '#666', fontSize: '0.9em' }}>
-              ✓ 報告組正在評分
+              ✓ 報告組正在評分 (評分者：{presentingScorerOwnerId})
             </div>
           ) : (
             // Other groups can now raise hand

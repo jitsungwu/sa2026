@@ -133,8 +133,10 @@ export default function HandsMonitor({ classId, isOwner }) {
                 <strong>{presentingGroup || '無'}</strong>
                 {presentingGroup && (
                   <>
-                    {!presentingScorerOwnerId && (
+                    {!presentingScorerOwnerId ? (
                       <span style={{ marginLeft: 12, color: '#d46b08', fontWeight: 'bold' }}>⏳ 尚未指定評分者</span>
+                    ) : (
+                      <span style={{ marginLeft: 12, color: '#52c41a', fontWeight: 'bold' }}>✓ 評分者：{presentingScorerOwnerId}</span>
                     )}
                     <button style={{ marginLeft: 12 }} onClick={endPresenting}>結束報告</button>
                   </>
