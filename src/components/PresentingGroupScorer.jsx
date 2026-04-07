@@ -1,13 +1,30 @@
 "use client"
 import React, { useEffect, useState } from "react"
 import { db } from "../firebaseClient"
-import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp, addDoc } from "../lib/firestoreWrapper"
+import { collection, query, where, onSnapshot } from "../lib/firestoreWrapper"
 
 export default function PresentingGroupScorer({ classId, group, presentingScorerOwnerId }) {
   const [hands, setHands] = useState([]) // Array of raised hands
   const [loading, setLoading] = useState(false)
   const [scoringHand, setScoringHand] = useState(null) // Currently scoring hand
   const [selectedScore, setSelectedScore] = useState(0)
+  const [participantId, setParticipantId] = useState(null)
+  const [error, setError] = useState(null)
+
+  // Get current participant ID (same logic as RaiseHandButton)
+  useEffect(() => {
+    let id = null
+    try {
+      const params = new URLSearchParams(window.location.search)
+      id = params.get('participantId') || null
+    } catch (e) {
+      id = null
+    }
+    if (!id) {
+      id = `p_${Date.now()}_${Math.floor(Math.random()*10000)}`
+    }
+    setParticipantId(id)
+  }, [])
 
   // Listen for raised hands in current group
   useEffect(() => {
@@ -45,40 +62,42 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
 
   const handleScore = async (handId) => {
     if (!handId || selectedScore < 0 || selectedScore > 3) {
-      alert('請選擇 0-3 分')
+      setError('請選擇 0-3 分')
+      return
+    }
+
+    // Check authorization
+    if (participantId !== presentingScorerOwnerId) {
+      setError('非報告組組長，無法給分')
       return
     }
 
     setLoading(true)
+    setError(null)
     try {
-      // Mark hand as resolved with the score
-      await updateDoc(doc(db, 'hands_raised', handId), {
-        active: false,
-        resolved: true,
-        resolvedScore: selectedScore,
-        resolvedBy: presentingScorerOwnerId,
-        resolvedAt: serverTimestamp()
+      // Call API to score
+      const response = await fetch('/api/score-hand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          classId,
+          handId,
+          points: selectedScore,
+          givenBy: participantId
+        })
       })
 
-      // Add to participation_logs
-      const hand = hands.find(h => h.id === handId)
-      if (hand) {
-        await addDoc(collection(db, 'participation_logs'), {
-          classId,
-          group: hand.group,
-          points: selectedScore,
-          timestamp: serverTimestamp(),
-          handRef: handId,
-          givenBy: presentingScorerOwnerId,
-          givenByRole: 'presenting_scorer'
-        })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || '給分失敗')
       }
 
       setScoringHand(null)
       setSelectedScore(0)
     } catch (err) {
       console.error('Score error:', err)
-      alert('給分失敗：' + err.message)
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -91,6 +110,20 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
   return (
     <div style={{ marginTop: 16, padding: 12, backgroundColor: '#e7f3ff', borderRadius: 4, border: '1px solid #91d5ff' }}>
       <h3 style={{ marginTop: 0, color: '#0050b3' }}>✍️ 給分介面</h3>
+
+      {/* Authorization check */}
+      {participantId && presentingScorerOwnerId && participantId !== presentingScorerOwnerId && (
+        <div style={{ padding: 8, backgroundColor: '#fff1f0', border: '1px solid #ffa39e', borderRadius: 4, marginBottom: 12, color: '#c41d7f' }}>
+          ⚠️ 你不是評分者，無法給分
+        </div>
+      )}
+
+      {/* Error message */}
+      {error && (
+        <div style={{ padding: 8, backgroundColor: '#fff1f0', border: '1px solid #ffa39e', borderRadius: 4, marginBottom: 12, color: '#cf1322' }}>
+          ❌ {error}
+        </div>
+      )}
 
       {hands.length === 0 ? (
         <div style={{ color: '#999', fontStyle: 'italic' }}>目前沒有學生舉手</div>
@@ -109,10 +142,15 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
                   backgroundColor: scoringHand?.id === hand.id ? '#fff7e6' : '#f0f2f5',
                   borderRadius: 4,
                   border: scoringHand?.id === hand.id ? '2px solid #faad14' : '1px solid #d9d9d9',
-                  cursor: 'pointer',
+                  cursor: participantId === presentingScorerOwnerId ? 'pointer' : 'not-allowed',
+                  opacity: participantId === presentingScorerOwnerId ? 1 : 0.6,
                   transition: 'all 0.2s'
                 }}
-                onClick={() => setScoringHand(hand)}
+                onClick={() => {
+                  if (participantId === presentingScorerOwnerId) {
+                    setScoringHand(hand)
+                  }
+                }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 'bold' }}>
@@ -152,18 +190,18 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
                         disabled={loading || selectedScore < 0 || selectedScore > 3}
                         style={{
                           padding: '6px 16px',
-                          backgroundColor: '#52c41a',
+                          backgroundColor: loading ? '#999' : '#52c41a',
                           color: '#fff',
                           border: 'none',
                           borderRadius: 4,
-                          cursor: 'pointer',
+                          cursor: loading ? 'not-allowed' : 'pointer',
                           fontWeight: 'bold'
                         }}
                       >
                         {loading ? '提交中...' : '確認給分'}
                       </button>
                       <button
-                        onClick={() => setScoringHand(null)}
+                        onClick={() => { setScoringHand(null); setError(null) }}
                         style={{
                           padding: '6px 16px',
                           backgroundColor: '#f5f5f5',
