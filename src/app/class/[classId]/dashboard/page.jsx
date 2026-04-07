@@ -103,7 +103,7 @@ export default function StudentDashboardPage() {
     } catch (e) {
       console.error('subscribe class doc error:', e)
     }
-  }, [classId])
+  }, [classId, db])
 
   // Check if user is in presenting group
   const isUserInPresentingGroup = () => {

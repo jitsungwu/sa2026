@@ -41,7 +41,7 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   }, [])
 
   useEffect(() => {
-    if (!participantId || !classId) return
+    if (!participantId || !classId || !db) return
 
     const unsubs = []
 
@@ -86,7 +86,7 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
     return () => {
       unsubs.forEach(unsub => typeof unsub === 'function' && unsub())
     }
-  }, [participantId, classId])
+  }, [participantId, classId, db])
 
   const handleClick = async () => {
     // If a group is currently presenting, only that group can raise hands

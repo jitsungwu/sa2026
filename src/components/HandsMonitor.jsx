@@ -27,7 +27,7 @@ export default function HandsMonitor({ classId, isOwner }) {
   }, [classId])
 
   useEffect(() => {
-    if (!classId) return
+    if (!classId || !db) return
     const classRef = doc(db, 'classes', classId)
     const unsubClass = onSnapshot(classRef, (snap) => {
       if (snap && typeof snap.data === 'function') {
@@ -41,7 +41,7 @@ export default function HandsMonitor({ classId, isOwner }) {
     }, (err) => console.error('class doc snapshot error:', err))
 
     return () => unsubClass()
-  }, [classId])
+  }, [classId, db])
 
   const handleAward = async (hand) => {
     // default wrapper: award 1 point

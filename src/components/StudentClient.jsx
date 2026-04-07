@@ -112,7 +112,7 @@ export default function StudentClient({ classId, initialGroup }) {
     } catch (e) {
       console.error('subscribe class doc error:', e)
     }
-  }, [classId])
+  }, [classId, db])
 
   // Active class UI
   if (classId) {
