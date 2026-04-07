@@ -143,23 +143,29 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
     <div>
       {/* If a group is currently presenting */}
       {presentingGroupId ? (
-        isUserInPresentingGroup() ? (
-          // User is in the presenting group
-          !presentingScorerOwnerId ? (
+        // When presenting group is set but scorer not assigned yet
+        !presentingScorerOwnerId ? (
+          isUserInPresentingGroup() ? (
             <div>
               <div style={{ marginBottom: 8, color: '#d46b08' }}>⏳ 報告中：等待指定評分者，無法舉手</div>
               <button onClick={claimScorer} disabled={loading}>我負責評分</button>
             </div>
           ) : (
-            <div style={{ color: '#666', fontSize: '0.9em' }}>
-              ✓ 報告組成員無法舉手（給分者已指定）
+            <div style={{ color: '#cf1322', fontSize: '0.9em' }}>
+              📋 報告組尚未指定評分者，無法舉手
             </div>
           )
         ) : (
-          // User is NOT in the presenting group
-          <div style={{ color: '#cf1322', fontSize: '0.9em' }}>
-            ⏸ 「{presentingGroupId}組」正在報告中，其他組別無法舉手
-          </div>
+          // Scorer has been assigned
+          isUserInPresentingGroup() ? (
+            <div style={{ color: '#666', fontSize: '0.9em' }}>
+              ✓ 報告組成員無法舉手（給分者已指定）
+            </div>
+          ) : (
+            <div style={{ color: '#cf1322', fontSize: '0.9em' }}>
+              ⏸ 「{presentingGroupId}組」正在報告中，其他組別無法舉手
+            </div>
+          )
         )
       ) : (
         // No group is presenting - normal raise hand
