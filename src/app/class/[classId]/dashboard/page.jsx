@@ -130,15 +130,14 @@ export default function StudentDashboardPage() {
       
       {/* 個人資訊 */}
       <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f0f0f0', borderRadius: 6, border: '1px solid #ddd' }}>
-        <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: '1em', fontWeight: 'bold' }}>個人資訊</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: '1em' }}>
-          <p style={{ margin: 4 }}><strong>{student.account}</strong></p>
-          <p style={{ margin: 4 }}>{student.name || '未提供'} | {student.groupId}組</p>
-          <p style={{ margin: 4 }}>座位：{seatInfo ? `${seatInfo.zone}第 ${seatInfo.row} 排` : '未選'}</p>
+        <div style={{ display: 'flex', gap: 16, fontSize: '1em', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span><strong>{student.account}</strong></span>
+          <span>{student.name || '未提供'} | {student.groupId}組</span>
+          <span>座位：{seatInfo ? `${seatInfo.zone}第 ${seatInfo.row} 排` : '未選'}</span>
           {!seatInfo && (
-            <p style={{ margin: 4, color: '#cf1322' }}>
+            <span style={{ color: '#cf1322' }}>
               <a href={`/class/${classId}/seat-selection`} style={{ color: '#0050b3' }}>重新選座位</a>
-            </p>
+            </span>
           )}
         </div>
       </div>
