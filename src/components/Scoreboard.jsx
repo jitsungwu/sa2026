@@ -23,7 +23,7 @@ export default function Scoreboard({ classId }) {
       console.error('Scoreboard snapshot error:', err)
     })
     return () => unsub()
-  }, [classId])
+  }, [classId, db])
 
   const groups = Object.keys(scores).sort()
 

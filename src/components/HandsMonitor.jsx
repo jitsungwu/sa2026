@@ -6,6 +6,7 @@ import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp,
 export default function HandsMonitor({ classId, isOwner }) {
   const [hands, setHands] = useState([])
   const [presentingGroup, setPresentingGroup] = useState(null)
+  const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
 
   useEffect(() => {
     if (!classId) return
@@ -26,19 +27,21 @@ export default function HandsMonitor({ classId, isOwner }) {
   }, [classId])
 
   useEffect(() => {
-    if (!classId) return
+    if (!classId || !db) return
     const classRef = doc(db, 'classes', classId)
     const unsubClass = onSnapshot(classRef, (snap) => {
       if (snap && typeof snap.data === 'function') {
         const data = snap.data() || {}
         setPresentingGroup(data.presentingGroupId || null)
+        setPresentingScorerOwnerId(data.presentingScorerOwnerId || null)
       } else {
         setPresentingGroup(null)
+        setPresentingScorerOwnerId(null)
       }
     }, (err) => console.error('class doc snapshot error:', err))
 
     return () => unsubClass()
-  }, [classId])
+  }, [classId, db])
 
   const handleAward = async (hand) => {
     // default wrapper: award 1 point
@@ -107,7 +110,7 @@ export default function HandsMonitor({ classId, isOwner }) {
   const endPresenting = async () => {
     if (!isOwner) { alert('僅老師可結束報告'); return }
     try {
-      await updateDoc(doc(db, 'classes', classId), { presentingGroupId: null })
+      await updateDoc(doc(db, 'classes', classId), { presentingGroupId: null, presentingScorerOwnerId: null })
     } catch (err) {
       console.error('結束報告錯誤：', err)
     }
@@ -128,7 +131,16 @@ export default function HandsMonitor({ classId, isOwner }) {
               <div style={{ marginBottom: 8 }}>
                 <span style={{ marginRight: 8 }}>目前報告組：</span>
                 <strong>{presentingGroup || '無'}</strong>
-                {presentingGroup && <button style={{ marginLeft: 12 }} onClick={endPresenting}>結束報告</button>}
+                {presentingGroup && (
+                  <>
+                    {!presentingScorerOwnerId ? (
+                      <span style={{ marginLeft: 12, color: '#d46b08', fontWeight: 'bold' }}>⏳ 尚未指定評分者</span>
+                    ) : (
+                      <span style={{ marginLeft: 12, color: '#52c41a', fontWeight: 'bold' }}>✓ 評分者：{presentingScorerOwnerId}</span>
+                    )}
+                    <button style={{ marginLeft: 12 }} onClick={endPresenting}>結束報告</button>
+                  </>
+                )}
               </div>
               <label style={{ marginRight: 8 }}>設為報告組（請保留前置零，例如 04）：</label>
               <input id="presenting-group-input" type="text" style={{ width: 80, marginRight: 12 }} />

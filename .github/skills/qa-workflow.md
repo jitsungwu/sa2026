@@ -1,3 +1,15 @@
+---
+name: qa-workflow
+description: "Use when running E2E tests or unit tests. Automatically manage Vitest and Playwright test execution with environment validation, pre-checks, per-check confirmation points, and cleanup."
+applyTo:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.test.js"
+  - "**/*.test.jsx"
+  - "**/*.spec.js"
+  - "**/*.spec.ts"
+---
+
 # Skill: Smart QA & Testing Pipeline (Vitest & Playwright)
 
 ## [Description]
