@@ -56,7 +56,7 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
     } catch (e) {
       console.error('subscribe hands error:', e)
     }
-  }, [classId, group])
+  }, [classId, group, db])
 
   const handleScore = async (handId) => {
     if (!handId || selectedScore < 0 || selectedScore > 3) {
