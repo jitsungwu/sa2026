@@ -8,22 +8,20 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
   const [loading, setLoading] = useState(false)
   const [scoringHand, setScoringHand] = useState(null) // Currently scoring hand
   const [selectedScore, setSelectedScore] = useState(0)
-  const [participantId, setParticipantId] = useState(null)
+  const [studentAccount, setStudentAccount] = useState(null)
   const [error, setError] = useState(null)
 
-  // Get current participant ID (same logic as RaiseHandButton)
+  // Get student account from localStorage
   useEffect(() => {
-    let id = null
     try {
-      const params = new URLSearchParams(window.location.search)
-      id = params.get('participantId') || null
+      const authStr = typeof window !== 'undefined' ? localStorage.getItem('studentAuth') : null
+      if (authStr) {
+        const auth = JSON.parse(authStr)
+        setStudentAccount(auth.account || null)
+      }
     } catch (e) {
-      id = null
+      console.error('Failed to get student account:', e)
     }
-    if (!id) {
-      id = `p_${Date.now()}_${Math.floor(Math.random()*10000)}`
-    }
-    setParticipantId(id)
   }, [])
 
   // Listen for raised hands in current group
@@ -66,8 +64,8 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
       return
     }
 
-    // Check authorization
-    if (participantId !== presentingScorerOwnerId) {
+    // Check authorization using student account
+    if (studentAccount !== presentingScorerOwnerId) {
       setError('非報告組組長，無法給分')
       return
     }
@@ -83,7 +81,7 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
           classId,
           handId,
           points: selectedScore,
-          givenBy: participantId
+          givenBy: studentAccount
         })
       })
 
@@ -112,7 +110,7 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
       <h3 style={{ marginTop: 0, color: '#0050b3' }}>✍️ 給分介面</h3>
 
       {/* Authorization check */}
-      {participantId && presentingScorerOwnerId && participantId !== presentingScorerOwnerId && (
+      {studentAccount && presentingScorerOwnerId && studentAccount !== presentingScorerOwnerId && (
         <div style={{ padding: 8, backgroundColor: '#fff1f0', border: '1px solid #ffa39e', borderRadius: 4, marginBottom: 12, color: '#c41d7f' }}>
           ⚠️ 你不是評分者，無法給分
         </div>
@@ -142,12 +140,12 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
                   backgroundColor: scoringHand?.id === hand.id ? '#fff7e6' : '#f0f2f5',
                   borderRadius: 4,
                   border: scoringHand?.id === hand.id ? '2px solid #faad14' : '1px solid #d9d9d9',
-                  cursor: participantId === presentingScorerOwnerId ? 'pointer' : 'not-allowed',
-                  opacity: participantId === presentingScorerOwnerId ? 1 : 0.6,
+                  cursor: studentAccount === presentingScorerOwnerId ? 'pointer' : 'not-allowed',
+                  opacity: studentAccount === presentingScorerOwnerId ? 1 : 0.6,
                   transition: 'all 0.2s'
                 }}
                 onClick={() => {
-                  if (participantId === presentingScorerOwnerId) {
+                  if (studentAccount === presentingScorerOwnerId) {
                     setScoringHand(hand)
                   }
                 }}

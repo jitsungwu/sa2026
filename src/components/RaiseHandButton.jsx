@@ -8,8 +8,22 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   const [raised, setRaised] = useState(false)
   const [activeDocId, setActiveDocId] = useState(null)
   const [participantId, setParticipantId] = useState(null)
+  const [studentAccount, setStudentAccount] = useState(null)
   const [presentingGroupId, setPresentingGroupId] = useState(null)
   const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
+
+  useEffect(() => {
+    // Get student account from localStorage
+    try {
+      const authStr = typeof window !== 'undefined' ? localStorage.getItem('studentAuth') : null
+      if (authStr) {
+        const auth = JSON.parse(authStr)
+        setStudentAccount(auth.account || null)
+      }
+    } catch (e) {
+      console.error('Failed to get student account:', e)
+    }
+  }, [])
 
   useEffect(() => {
     // allow overriding participant id via URL param for testing (e.g. ?participantId=p_123)
@@ -103,9 +117,12 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   }
 
   const claimScorer = async () => {
-    if (!classId || !participantId) return
+    if (!classId || !studentAccount) {
+      alert('無法取得學生資訊')
+      return
+    }
     try {
-      await updateDoc(doc(db, 'classes', classId), { presentingScorerOwnerId: participantId })
+      await updateDoc(doc(db, 'classes', classId), { presentingScorerOwnerId: studentAccount })
     } catch (err) {
       console.error('claim scorer error:', err)
       alert('設定評分者失敗')
