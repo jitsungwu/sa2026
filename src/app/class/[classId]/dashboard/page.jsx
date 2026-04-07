@@ -142,9 +142,9 @@ export default function StudentDashboardPage() {
         </div>
       </div>
 
-      {/* 報告組功能 */}
+      {/* 互動功能 */}
       <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 6, border: '1px solid #eee' }}>
-        <h2 style={{ marginTop: 0 }}>報告組功能</h2>
+        <h2 style={{ marginTop: 0 }}>互動功能</h2>
         <RaiseHandButton classId={classId} group={student.groupId} />
         
         {isUserInPresentingGroup() && (
