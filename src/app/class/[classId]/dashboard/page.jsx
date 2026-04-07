@@ -145,10 +145,22 @@ export default function StudentDashboardPage() {
         )}
       </div>
 
-      {/* 舉手操制 */}
+      {/* 舉手操制 & 報告組評分 */}
       <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 6, border: '1px solid #eee' }}>
         <h2 style={{ marginTop: 0 }}>舉手操制</h2>
         <RaiseHandButton classId={classId} group={student.groupId} />
+        
+        {isUserInPresentingGroup() && (
+          <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #ddd' }}>
+            <h3 style={{ marginTop: 0, color: '#856404' }}>📊 報告組評分介面</h3>
+            <p style={{ color: '#666', marginBottom: 16, fontSize: '0.9em' }}>你所在的 {student.groupId} 組正在報告中</p>
+            <PresentingGroupScorer 
+              classId={classId} 
+              group={student.groupId} 
+              presentingScorerOwnerId={presentingScorerOwnerId} 
+            />
+          </div>
+        )}
       </div>
 
       {/* 即時積分榜 */}
@@ -156,19 +168,6 @@ export default function StudentDashboardPage() {
         <h2 style={{ marginTop: 0 }}>即時積分榜</h2>
         <Scoreboard classId={classId} />
       </div>
-
-      {/* 報告組評分（條件顯示） */}
-      {isUserInPresentingGroup() && (
-        <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#fffbe6', borderRadius: 6, border: '1px solid #ffe58f' }}>
-          <h2 style={{ marginTop: 0, color: '#856404' }}>📊 報告組評分介面</h2>
-          <p style={{ color: '#666', marginBottom: 16 }}>你所在的 {student.groupId} 組正在報告中</p>
-          <PresentingGroupScorer 
-            classId={classId} 
-            group={student.groupId} 
-            presentingScorerOwnerId={presentingScorerOwnerId} 
-          />
-        </div>
-      )}
 
       {/* 登出按鈕 */}
       <div>
