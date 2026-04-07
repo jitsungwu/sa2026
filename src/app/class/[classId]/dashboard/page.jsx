@@ -118,8 +118,8 @@ export default function StudentDashboardPage() {
       
       {!student ? (
         <>
-          <h1>未登入</h1>
-          <p>未登入或登入已過期，請重新登入。</p>
+          <h1 style={{ fontSize: '2em' }}>未登入</h1>
+          <p style={{ fontSize: '1em' }}>未登入或登入已過期，請重新登入。</p>
           <a href="/signin" style={{ color: '#0070f3', textDecoration: 'underline' }}>
             回到登入頁面
           </a>
@@ -129,9 +129,9 @@ export default function StudentDashboardPage() {
           <h1>學生互動儀表板</h1>
       
       {/* 個人資訊 */}
-      <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f0f0f0', borderRadius: 6, border: '1px solid #ddd', fontSize: '0.9em' }}>
-        <h3 style={{ marginTop: 0, marginBottom: 8 }}>個人資訊</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: '0.85em' }}>
+      <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f0f0f0', borderRadius: 6, border: '1px solid #ddd' }}>
+        <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: '1em', fontWeight: 'bold' }}>個人資訊</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: '1em' }}>
           <p style={{ margin: 4 }}><strong>{student.account}</strong></p>
           <p style={{ margin: 4 }}>{student.name || '未提供'} | {student.groupId}組</p>
           <p style={{ margin: 4 }}>座位：{seatInfo ? `${seatInfo.zone}第 ${seatInfo.row} 排` : '未選'}</p>
@@ -150,7 +150,7 @@ export default function StudentDashboardPage() {
         
         {isUserInPresentingGroup() && (
           <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #ddd' }}>
-            <p style={{ color: '#666', marginBottom: 16, fontSize: '0.9em' }}>📊 你所在的 {student.groupId} 組正在報告中</p>
+            <p style={{ color: '#666', marginBottom: 16, fontSize: '1em' }}>📊 你所在的 {student.groupId} 組正在報告中</p>
             <PresentingGroupScorer 
               classId={classId} 
               group={student.groupId} 
