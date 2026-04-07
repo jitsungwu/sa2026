@@ -28,6 +28,9 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
 
   useEffect(() => {
     if (!participantId || !classId) return
+
+    const unsubs = []
+
     // listen for presentingGroupId and presentingScorerOwnerId changes
     try {
       const classRef = doc(db, 'classes', classId)
@@ -41,25 +44,34 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
           setPresentingScorerOwnerId(null)
         }
       }, (err) => console.error('Class listen error:', err))
-
-      return () => unsubClass()
+      unsubs.push(unsubClass)
     } catch (e) {
       console.error('subscribe class doc error:', e)
     }
-    const col = collection(db, 'hands_raised')
-    const q = query(col, where('classId', '==', classId), where('ownerId', '==', participantId), where('active', '==', true))
-    const unsub = onSnapshot(q, (snapshot) => {
-      const has = snapshot.docs.length > 0
-      setRaised(has)
-      if (has) {
-        setActiveDocId(snapshot.docs[0].id)
-      } else {
-        setActiveDocId(null)
-      }
-    }, (err) => {
-      console.error('RaiseHand listen error:', err)
-    })
-    return () => unsub()
+
+    // listen for hands_raised changes
+    try {
+      const col = collection(db, 'hands_raised')
+      const q = query(col, where('classId', '==', classId), where('ownerId', '==', participantId), where('active', '==', true))
+      const unsub = onSnapshot(q, (snapshot) => {
+        const has = snapshot.docs.length > 0
+        setRaised(has)
+        if (has) {
+          setActiveDocId(snapshot.docs[0].id)
+        } else {
+          setActiveDocId(null)
+        }
+      }, (err) => {
+        console.error('RaiseHand listen error:', err)
+      })
+      unsubs.push(unsub)
+    } catch (e) {
+      console.error('hands_raised listen error:', e)
+    }
+
+    return () => {
+      unsubs.forEach(unsub => typeof unsub === 'function' && unsub())
+    }
   }, [participantId, classId])
 
   const handleClick = async () => {
