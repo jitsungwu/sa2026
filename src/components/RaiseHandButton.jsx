@@ -75,10 +75,17 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   }, [participantId, classId])
 
   const handleClick = async () => {
-    // If this group is currently presenting and no scorer assigned, prevent raising
-    if (isUserInPresentingGroup() && !presentingScorerOwnerId) {
-      alert('目前尚未指定評分者，報告組無法舉手')
-      return
+    // If a group is currently presenting, only that group can raise hands
+    if (presentingGroupId) {
+      if (!isUserInPresentingGroup()) {
+        alert('目前有其他組正在報告中，無法舉手')
+        return
+      }
+      // If in presenting group but scorer not assigned
+      if (!presentingScorerOwnerId) {
+        alert('目前尚未指定評分者，報告組無法舉手')
+        return
+      }
     }
     if (raised || loading) return
     setLoading(true)
@@ -134,26 +141,39 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
 
   return (
     <div>
-      {/* If this group is currently presenting and no scorer assigned, show claim button and block raising */}
-      {isUserInPresentingGroup() && !presentingScorerOwnerId ? (
-        <div>
-          <div style={{ marginBottom: 8 }}>目前報告中：等待指定評分者，無法舉手</div>
-          <button onClick={claimScorer} disabled={loading}>我負責評分</button>
-        </div>
-      ) : isUserInPresentingGroup() && presentingScorerOwnerId ? (
-        <div style={{ color: '#666', fontSize: '0.9em' }}>
-          ✓ 報告組成員無法舉手（給分者已指定）
-        </div>
-      ) : (!raised ? (
-        <button onClick={handleClick} disabled={loading}>
-          {loading ? "提交中…" : "舉手"}
-        </button>
+      {/* If a group is currently presenting */}
+      {presentingGroupId ? (
+        isUserInPresentingGroup() ? (
+          // User is in the presenting group
+          !presentingScorerOwnerId ? (
+            <div>
+              <div style={{ marginBottom: 8, color: '#d46b08' }}>⏳ 報告中：等待指定評分者，無法舉手</div>
+              <button onClick={claimScorer} disabled={loading}>我負責評分</button>
+            </div>
+          ) : (
+            <div style={{ color: '#666', fontSize: '0.9em' }}>
+              ✓ 報告組成員無法舉手（給分者已指定）
+            </div>
+          )
+        ) : (
+          // User is NOT in the presenting group
+          <div style={{ color: '#cf1322', fontSize: '0.9em' }}>
+            ⏸ 「{presentingGroupId}組」正在報告中，其他組別無法舉手
+          </div>
+        )
       ) : (
-        <div>
-          <span style={{ marginRight: 8 }}>已舉手</span>
-          <button onClick={handleCancel} disabled={loading}>取消舉手</button>
-        </div>
-      ))}
+        // No group is presenting - normal raise hand
+        !raised ? (
+          <button onClick={handleClick} disabled={loading}>
+            {loading ? "提交中…" : "舉手"}
+          </button>
+        ) : (
+          <div>
+            <span style={{ marginRight: 8 }}>已舉手</span>
+            <button onClick={handleCancel} disabled={loading}>取消舉手</button>
+          </div>
+        )
+      )}
     </div>
   )
 }
