@@ -104,7 +104,7 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
   }
 
   if (!presentingScorerOwnerId) {
-    return <div style={{ color: '#999' }}>等待評分者聲稱...</div>
+    return <div style={{ color: '#999' }}>尚未指定評分者</div>
   }
 
   return (

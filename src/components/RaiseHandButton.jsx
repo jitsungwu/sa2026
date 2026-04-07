@@ -147,7 +147,7 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
         !presentingScorerOwnerId ? (
           isUserInPresentingGroup() ? (
             <div>
-              <div style={{ marginBottom: 8, color: '#d46b08' }}>⏳ 報告中：等待指定評分者，無法舉手</div>
+              <div style={{ marginBottom: 8, color: '#d46b08' }}>⏳ 報告組</div>
               <button onClick={claimScorer} disabled={loading}>我負責評分</button>
             </div>
           ) : (
