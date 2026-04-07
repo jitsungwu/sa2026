@@ -1,5 +1,5 @@
-import { db } from '@/firebaseClient'
-import { doc, updateDoc, collection, addDoc, serverTimestamp, getDoc } from '@/lib/firestoreWrapper'
+import { db } from '../../../firebaseClient'
+import { doc, updateDoc, collection, addDoc, serverTimestamp, getDoc } from '../../../lib/firestoreWrapper'
 
 export async function POST(request) {
   try {
@@ -50,16 +50,6 @@ export async function POST(request) {
     if (classData.presentingScorerOwnerId !== givenBy) {
       return Response.json(
         { error: '非報告組組長' },
-        { status: 403 }
-      )
-    }
-
-    // Check if group matches presenting group
-    const presentingGroupNum = parseInt(String(classData.presentingGroupId), 10)
-    const handGroupNum = parseInt(String(handData.group), 10)
-    if (presentingGroupNum !== handGroupNum) {
-      return Response.json(
-        { error: '只能評分自己組別的舉手' },
         { status: 403 }
       )
     }

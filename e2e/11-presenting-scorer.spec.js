@@ -107,6 +107,11 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   const scorerUrl = `${base}/class/student?group=${GROUP_ID}&participantId=${scorerStudentId}`
   console.log('Scorer URL:', scorerUrl)
   await scorerPage.goto(scorerUrl, { waitUntil: 'domcontentloaded' })
+  
+  // Set studentAuth in localStorage for the scorer
+  await scorerPage.evaluate((studentId) => {
+    localStorage.setItem('studentAuth', JSON.stringify({ account: studentId }))
+  }, scorerStudentId)
 
   // Wait for the "我負責評分" button to appear (with longer timeout for Firestore data load)
   const claimBtn = scorerPage.locator('button:has-text("我負責評分")')
@@ -139,6 +144,15 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   // This student should be able to raise hand since they're not in the presenting group
   const otherStudentPage = await browser.newPage()
   
+  const otherUrl = `${base}/class/student?group=01&participantId=${otherStudentId}`
+  console.log('Other student URL:', otherUrl)
+  await otherStudentPage.goto(otherUrl, { waitUntil: 'domcontentloaded' })
+  
+  // Set studentAuth in localStorage for the other student
+  await otherStudentPage.evaluate((studentId) => {
+    localStorage.setItem('studentAuth', JSON.stringify({ account: studentId }))
+  }, otherStudentId)
+  
   // Capture console messages
   const consoleLogs = []
   otherStudentPage.on('console', msg => {
@@ -148,10 +162,6 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
     })
     console.log(`[${msg.type()}] ${msg.text()}`)
   })
-  
-  const otherUrl = `${base}/class/student?group=01&participantId=${otherStudentId}`
-  console.log('Other student URL:', otherUrl)
-  await otherStudentPage.goto(otherUrl, { waitUntil: 'domcontentloaded' })
 
   // Wait for page to fully load and Firestore listeners to initialize
   await otherStudentPage.waitForTimeout(3000)
