@@ -86,6 +86,35 @@ Scenario 4: 分數超範圍
 - API 與實作建議：在給分 endpoint 中依 `givenBy.role` 驗證範圍（教師 1..5，報告組/學生 0..3），所有寫入與 hands resolving 建議以 transaction 或原子作業完成，並同時寫入 `participation_logs` 與更新 denormalized 聚合欄位。
 
 
+### Issue #8: 學生（報告組）：虛擬座位表介面
+- State: OPEN
+- Labels: -
+- URL: https://github.com/jitsungwu/sa2026/issues/8
+
+身為 同學，我想要 在操作介面查看「虛擬座位表」，因此我可以 在小組分享時間知道其他組別的分布位置。
+
+接受條件
+
+Scenario 1：視覺化呈現教室布局
+- Given (前提)：
+  - 多個組別已完成座位選擇
+  - 我正在「學生互動儀表板」點擊「查看座位圖」
+- When (當操作發生時)： 頁面切換至網格視圖
+- Then (預期結果)：
+  - 系統應以網格形式呈現教室，且有人的格子必須顯示組號
+
+Scenario 2：例外狀況
+- Given (前提)：
+  - 課程尚未啟動
+  - 我正在「學生互動儀表板」點擊「查看座位圖」
+- When (當操作發生時)： 頁面切換至網格視圖
+- Then (預期結果)： 系統應回應「課程尚未啟動」
+
+**相依註記：** Issue #8 (虛擬座位表介面) 依賴 Issue #14 (登入時選擇座位)。#8 的視覺化假設已存在座位資料（classes/.../layout）。建議先完成 #14 或提供 seed 資料以供 #8 開發/展示。
+
+---
+
+
 ### Issue #24: 學生：登入系統
 - State: OPEN
 - Labels: Sprint 2
@@ -118,31 +147,23 @@ Scenario 3：登入失敗
 ---
 
 ### Issue #10: 學生：登入後查看小組累計點數
-- State: OPEN
+- State: CLOSED
 - Labels: -
 - URL: https://github.com/jitsungwu/sa2026/issues/10
 
 身為 在班學生，我想要 登入後查詢自己目前的累計點數，因此我可以 瞭解自己的平時表現並適時調整參與度。
+
 接受條件
-Scenario 1: 
-- Given 報告組成員已登入，而且老師已經設定報告組別
-- When 報告組別可以看到同學舉手，報告組別依順序給發問組分數( 0–3 )並送出
-- Then 系統新增 `participation_logs`（含 `classId, group, points, timestamp, handRef?, givenBy`）並回傳 200；Scoreboard 在可見時段反映分數變動。
 
-Scenario 2:
-- Given 非報告組成員送分
-- When 發出請求
-- Then 回傳 403 + { error: "非報告組" }。
+Scenario 1：查看小組累計點數
+- Given 學生登入查看分數
+- When 提出要求
+- Then 
+  - 展示分數
+  - 使用 denormalized `group_score` 欄位以提升效能（或說明為 eventual consistency）
+  - UI 同時展示最後更新時間與一致性說明
 
-Scenario 3: 
-- Given 分數超範圍
-- When 發出請求
-- Then 回傳 400 + { error: "分數超範圍" }。
-
-Scenario 4:
-- Given 相同的組別只有第一位登入的同學可以給分，其他同學不能給分
-- When 重複送出
-- Then 回傳 409 + { error: "重複計分" }。並不重複計分。
+**備註：** 已包含在 Dashboard 功能裡，Iteration 2 不需要這個 User Story
 
 
 ---
