@@ -107,7 +107,7 @@ export default function HandsMonitor({ classId, isOwner }) {
   const endPresenting = async () => {
     if (!isOwner) { alert('僅老師可結束報告'); return }
     try {
-      await updateDoc(doc(db, 'classes', classId), { presentingGroupId: null })
+      await updateDoc(doc(db, 'classes', classId), { presentingGroupId: null, presentingScorerOwnerId: null })
     } catch (err) {
       console.error('結束報告錯誤：', err)
     }
