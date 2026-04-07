@@ -128,32 +128,29 @@ export default function StudentDashboardPage() {
         <>
           <h1>學生互動儀表板</h1>
       
-      {/* 學生基本資訊 */}
-      <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f0f0f0', borderRadius: 6, border: '1px solid #ddd' }}>
-        <h2 style={{ marginTop: 0 }}>學生信息</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <p><strong>學號：</strong> {student.account}</p>
-          <p><strong>姓名：</strong> {student.name || '未提供'}</p>
-          <p><strong>組別：</strong> {student.groupId}</p>
-          <p><strong>班級：</strong> {student.classId}</p>
+      {/* 個人資訊 */}
+      <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f0f0f0', borderRadius: 6, border: '1px solid #ddd', fontSize: '0.9em' }}>
+        <h3 style={{ marginTop: 0, marginBottom: 8 }}>個人資訊</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: '0.85em' }}>
+          <p style={{ margin: 4 }}><strong>{student.account}</strong></p>
+          <p style={{ margin: 4 }}>{student.name || '未提供'} | {student.groupId}組</p>
+          <p style={{ margin: 4 }}>座位：{seatInfo ? `${seatInfo.zone}第 ${seatInfo.row} 排` : '未選'}</p>
+          {!seatInfo && (
+            <p style={{ margin: 4, color: '#cf1322' }}>
+              <a href={`/class/${classId}/seat-selection`} style={{ color: '#0050b3' }}>重新選座位</a>
+            </p>
+          )}
         </div>
-        <p><strong>座位位置：</strong> {seatInfo ? `${seatInfo.zone}第 ${seatInfo.row} 排` : '未選座位'}</p>
-        {!seatInfo && (
-          <p style={{ color: '#cf1322', fontSize: '0.9em' }}>
-            ⚠️ <a href={`/class/${classId}/seat-selection`} style={{ color: '#0050b3' }}>點擊重新選擇座位</a>
-          </p>
-        )}
       </div>
 
-      {/* 舉手操制 & 報告組評分 */}
+      {/* 報告組功能 */}
       <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 6, border: '1px solid #eee' }}>
-        <h2 style={{ marginTop: 0 }}>舉手操制</h2>
+        <h2 style={{ marginTop: 0 }}>報告組功能</h2>
         <RaiseHandButton classId={classId} group={student.groupId} />
         
         {isUserInPresentingGroup() && (
           <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #ddd' }}>
-            <h3 style={{ marginTop: 0, color: '#856404' }}>📊 報告組評分介面</h3>
-            <p style={{ color: '#666', marginBottom: 16, fontSize: '0.9em' }}>你所在的 {student.groupId} 組正在報告中</p>
+            <p style={{ color: '#666', marginBottom: 16, fontSize: '0.9em' }}>📊 你所在的 {student.groupId} 組正在報告中</p>
             <PresentingGroupScorer 
               classId={classId} 
               group={student.groupId} 
