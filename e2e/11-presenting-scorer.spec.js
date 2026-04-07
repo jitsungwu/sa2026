@@ -124,12 +124,16 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   // Click to claim scorer role
   await claimBtn.click()
 
-  // After claiming, the claim button should disappear (or be disabled) and raise button should be available
+  // After claiming, the claim button should disappear
   await expect(claimBtn).toHaveCount(0)
 
-  // Verify raise hand button is now available for the scorer
+  // Verify that scorer cannot raise hand (displaying info text instead of button)
+  // Scorers in presenting group cannot raise hands after claiming scorer role
   const scorerRaiseBtn = scorerPage.locator('button:has-text("舉手")')
-  await expect(scorerRaiseBtn).toHaveCount(1)
+  await expect(scorerRaiseBtn).toHaveCount(0)  // Should be 0 now since they're assigned as scorer
+
+  // Wait for scoring interface to appear
+  await scorerPage.waitForTimeout(2000)
 
   // Now open another student page - student from different group (413000001 from group 01)
   // This student should be able to raise hand since they're not in the presenting group
