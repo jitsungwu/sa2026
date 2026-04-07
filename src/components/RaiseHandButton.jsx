@@ -76,7 +76,7 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
 
   const handleClick = async () => {
     // If this group is currently presenting and no scorer assigned, prevent raising
-    if (presentingGroupId && presentingGroupId === group && !presentingScorerOwnerId) {
+    if (isUserInPresentingGroup() && !presentingScorerOwnerId) {
       alert('目前尚未指定評分者，報告組無法舉手')
       return
     }
@@ -123,13 +123,26 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
     }
   }
 
+  // Normalize group values for comparison (handle "05" vs "5" mismatch)
+  const isUserInPresentingGroup = () => {
+    if (!presentingGroupId || !group) return false
+    // Convert both to numbers for comparison to handle "05" vs "5" case
+    const presentingNum = parseInt(String(presentingGroupId), 10)
+    const groupNum = parseInt(String(group), 10)
+    return presentingNum === groupNum && !isNaN(presentingNum) && !isNaN(groupNum)
+  }
+
   return (
     <div>
       {/* If this group is currently presenting and no scorer assigned, show claim button and block raising */}
-      {presentingGroupId && presentingGroupId === group && !presentingScorerOwnerId ? (
+      {isUserInPresentingGroup() && !presentingScorerOwnerId ? (
         <div>
           <div style={{ marginBottom: 8 }}>目前報告中：等待指定評分者，無法舉手</div>
           <button onClick={claimScorer} disabled={loading}>我負責評分</button>
+        </div>
+      ) : isUserInPresentingGroup() && presentingScorerOwnerId ? (
+        <div style={{ color: '#666', fontSize: '0.9em' }}>
+          ✓ 報告組成員無法舉手（給分者已指定）
         </div>
       ) : (!raised ? (
         <button onClick={handleClick} disabled={loading}>

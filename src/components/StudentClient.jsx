@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from 'next/navigation'
 import RaiseHandButton from "./RaiseHandButton"
+import PresentingGroupScorer from "./PresentingGroupScorer"
 import Scoreboard from "./Scoreboard"
 import { db } from '../firebaseClient'
 import { collection, getDocs, doc, getDoc, query, where, onSnapshot } from '../lib/firestoreWrapper'
@@ -10,9 +11,19 @@ export default function StudentClient({ classId, initialGroup }) {
   const router = useRouter()
   const [group, setGroup] = useState(null)
   const [locked, setLocked] = useState(false)
+  const [presentingGroupId, setPresentingGroupId] = useState(null)
+  const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
 
   const [classes, setClasses] = useState([])
   const [selectedClass, setSelectedClass] = useState(null)
+
+  // Check if current user is in the presenting group
+  const isUserPresentingGroupMember = () => {
+    if (!presentingGroupId || !group) return false
+    const presentingNum = parseInt(String(presentingGroupId), 10)
+    const groupNum = parseInt(String(group), 10)
+    return presentingNum === groupNum && !isNaN(presentingNum) && !isNaN(groupNum)
+  }
 
   useEffect(() => {
     if (classId) {
@@ -80,9 +91,61 @@ export default function StudentClient({ classId, initialGroup }) {
     load()
   }, [classId, router])
 
+  // Listen for presenting group info from active class
+  useEffect(() => {
+    if (!classId || !db) return
+
+    try {
+      const classRef = doc(db, 'classes', classId)
+      const unsub = onSnapshot(classRef, (snap) => {
+        if (snap && typeof snap.data === 'function') {
+          const data = snap.data() || {}
+          setPresentingGroupId(data.presentingGroupId || null)
+          setPresentingScorerOwnerId(data.presentingScorerOwnerId || null)
+        } else {
+          setPresentingGroupId(null)
+          setPresentingScorerOwnerId(null)
+        }
+      }, (err) => console.error('Listen presenting group error:', err))
+
+      return () => unsub()
+    } catch (e) {
+      console.error('subscribe class doc error:', e)
+    }
+  }, [classId])
+
   // Active class UI
   if (classId) {
     if (!group) return null
+    
+    // If user is in presenting group, show presenting group UI
+    if (isUserPresentingGroupMember()) {
+      return (
+        <div>
+          <label>
+            組別：
+            <span style={{ marginLeft: 8 }}>{group} (已鎖定 - 報告組)</span>
+          </label>
+
+          <div style={{ marginTop: 16, padding: 12, backgroundColor: '#fff3cd', borderRadius: 4, border: '1px solid #ffc107' }}>
+            <h3 style={{ marginTop: 0, color: '#856404' }}>📢 報告組</h3>
+            <RaiseHandButton classId={classId} group={group} />
+          </div>
+
+          <PresentingGroupScorer classId={classId} group={group} presentingScorerOwnerId={presentingScorerOwnerId} />
+
+          <Scoreboard classId={classId} />
+
+          {locked && (
+            <button className="btn" style={{ marginTop: 12 }} onClick={() => {
+              router.push('/')
+            }}>退出並重新選擇</button>
+          )}
+        </div>
+      )
+    }
+
+    // Normal student UI
     return (
       <div>
         <label>
