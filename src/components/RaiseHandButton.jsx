@@ -8,6 +8,8 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   const [raised, setRaised] = useState(false)
   const [activeDocId, setActiveDocId] = useState(null)
   const [participantId, setParticipantId] = useState(null)
+  const [presentingGroupId, setPresentingGroupId] = useState(null)
+  const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
 
   useEffect(() => {
     // allow overriding participant id via URL param for testing (e.g. ?participantId=p_123)
@@ -26,6 +28,24 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
 
   useEffect(() => {
     if (!participantId || !classId) return
+    // listen for presentingGroupId and presentingScorerOwnerId changes
+    try {
+      const classRef = doc(db, 'classes', classId)
+      const unsubClass = onSnapshot(classRef, (snap) => {
+        if (snap && typeof snap.data === 'function') {
+          const data = snap.data() || {}
+          setPresentingGroupId(data.presentingGroupId || null)
+          setPresentingScorerOwnerId(data.presentingScorerOwnerId || null)
+        } else {
+          setPresentingGroupId(null)
+          setPresentingScorerOwnerId(null)
+        }
+      }, (err) => console.error('Class listen error:', err))
+
+      return () => unsubClass()
+    } catch (e) {
+      console.error('subscribe class doc error:', e)
+    }
     const col = collection(db, 'hands_raised')
     const q = query(col, where('classId', '==', classId), where('ownerId', '==', participantId), where('active', '==', true))
     const unsub = onSnapshot(q, (snapshot) => {
@@ -43,6 +63,11 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   }, [participantId, classId])
 
   const handleClick = async () => {
+    // If this group is currently presenting and no scorer assigned, prevent raising
+    if (presentingGroupId && presentingGroupId === group && !presentingScorerOwnerId) {
+      alert('目前尚未指定評分者，報告組無法舉手')
+      return
+    }
     if (raised || loading) return
     setLoading(true)
     try {
@@ -55,6 +80,16 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
       console.error("舉手錯誤：", err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const claimScorer = async () => {
+    if (!classId || !participantId) return
+    try {
+      await updateDoc(doc(db, 'classes', classId), { presentingScorerOwnerId: participantId })
+    } catch (err) {
+      console.error('claim scorer error:', err)
+      alert('設定評分者失敗')
     }
   }
 
@@ -78,7 +113,13 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
 
   return (
     <div>
-      {!raised ? (
+      {/* If this group is currently presenting and no scorer assigned, show claim button and block raising */}
+      {presentingGroupId && presentingGroupId === group && !presentingScorerOwnerId ? (
+        <div>
+          <div style={{ marginBottom: 8 }}>目前報告中：等待指定評分者，無法舉手</div>
+          <button onClick={claimScorer} disabled={loading}>我負責評分</button>
+        </div>
+      ) : (!raised ? (
         <button onClick={handleClick} disabled={loading}>
           {loading ? "提交中…" : "舉手"}
         </button>
@@ -87,7 +128,7 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
           <span style={{ marginRight: 8 }}>已舉手</span>
           <button onClick={handleCancel} disabled={loading}>取消舉手</button>
         </div>
-      )}
+      ))}
     </div>
   )
 }
