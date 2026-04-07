@@ -24,22 +24,25 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
     }
   }, [])
 
-  // Listen for raised hands in current group
+  // Listen for raised hands in current class (all groups, not just presenting group)
   useEffect(() => {
-    if (!classId || !group) return
+    if (!classId) return
 
     try {
-      // Convert group to match Firestore format
-      const groupStr = String(group)
+      console.log('🎯 PresentingGroupScorer listening for all hands in class:', classId)
       const col = collection(db, 'hands_raised')
+      // Query ALL raised hands in this class, not filtered by group
       const q = query(
         col,
         where('classId', '==', classId),
-        where('group', '==', groupStr),
         where('active', '==', true)
       )
 
       const unsub = onSnapshot(q, (snapshot) => {
+        console.log('📝 Hands snapshot:', snapshot.docs.length, 'documents')
+        snapshot.docs.forEach(doc => {
+          console.log('  Hand:', doc.data())
+        })
         const hands = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
@@ -56,7 +59,7 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
     } catch (e) {
       console.error('subscribe hands error:', e)
     }
-  }, [classId, group, db])
+  }, [classId, db])
 
   const handleScore = async (handId) => {
     if (!handId || selectedScore < 0 || selectedScore > 3) {
