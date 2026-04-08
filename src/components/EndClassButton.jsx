@@ -41,8 +41,8 @@ export default function EndClassButton({ classId, classOwner, currentUser }) {
         }
 
         try {
-          // 清除座位登記紀錄（layout）
-          await setDoc(doc(db, `classes/${classId}/layout`, 'grid'), {}, { merge: true })
+          // 清除座位登記紀錄（layout）- 使用 merge: false 完全覆蓋為空對象
+          await setDoc(doc(db, `classes/${classId}/layout`, 'grid'), {}, { merge: false })
         } catch (err) {
           console.error('無法清除座位登記紀錄', err)
         }
