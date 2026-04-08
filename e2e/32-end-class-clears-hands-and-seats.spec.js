@@ -49,36 +49,53 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
     if (!logoutBtn) {
       console.log('Not logged in yet, performing signin...')
       
-      // Fill email and password on signin page
-      await teacherPage.fill('input[placeholder="email@example.com"]', teacherEmail)
-      await teacherPage.fill('input[type="password"]', teacherPassword)
-      console.log(`Filled credentials for: ${teacherEmail}`)
+      // First, click "教師登入" button to show the form
+      const teacherLoginBtn = teacherPage.locator('button:has-text("教師登入")')
+      if (await teacherLoginBtn.count() > 0) {
+        console.log('Clicking "教師登入" button')
+        await teacherLoginBtn.click()
+        await teacherPage.waitForTimeout(800)
+      }
+      
+      // Now fill email and password on signin page
+      const emailInputs = await teacherPage.locator('input[placeholder="email@example.com"]')
+      const passwordInputs = await teacherPage.locator('input[type="password"]')
+      
+      if (await emailInputs.count() > 0) {
+        await emailInputs.fill(teacherEmail)
+        console.log(`Filled email: ${teacherEmail}`)
+      } else {
+        console.warn('Email input not found')
+      }
+      
+      if (await passwordInputs.count() > 0) {
+        await passwordInputs.fill(teacherPassword)
+        console.log('Filled password')
+      } else {
+        console.warn('Password input not found')
+      }
       
       // Click signin button
       const loginBtn = teacherPage.locator('button:has-text("登入")')
       const btnCount = await loginBtn.count()
       console.log(`Login buttons found: ${btnCount}`)
       if (btnCount > 0) {
+        console.log('Clicking first signin button')
         await loginBtn.first().click()
-        console.log('Clicked signin button')
       }
       
-      // Wait for signin to complete (look for logout button)
+      // Wait for auth to complete and redirect (check for logout or navigate)
       try {
-        await teacherPage.waitForSelector('button:has-text("登出")', { timeout: 10000 })
-        console.log('✓ Signin successful - logout button appeared')
+        await teacherPage.waitForURL(`**/class/monitor`, { timeout: 10000 })
+        console.log('✓ Redirected to monitor page after signin')
       } catch (e) {
-        console.warn('⚠ Timeout waiting for logout button - signin may have failed')
-        console.warn('Continuing anyway to diagnose further issues...')
+        console.warn('⚠ Did not redirect to monitor - may still be on signin page or authenticating')
       }
+      
+      await teacherPage.waitForTimeout(2000)
     } else {
       console.log('Already logged in - logout button exists')
     }
-    
-    // Navigate to monitor page
-    console.log('Navigating to monitor page')
-    await teacherPage.goto(`${BASE_URL}/class/monitor`, { waitUntil: 'domcontentloaded' })
-    await teacherPage.waitForTimeout(2000)
     
     // Activate class if needed
     console.log('=== Class Activation ===')
