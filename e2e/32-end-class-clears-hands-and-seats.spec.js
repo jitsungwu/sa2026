@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test'
 import fs from 'fs'
 import path from 'path'
+import dotenv from 'dotenv'
+
+// Load .env.local at import time
+dotenv.config({ path: '.env.local' })
 
 // E2E (UI-only): Issue #32 - Scenario 2
 // Flow (UI only, using real Firebase login):
@@ -22,68 +26,96 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
     const demoClassId = 'demo'
     const studentA = all[0]
     const studentB = all[1]
+    
+    // Get credentials from environment (already loaded via dotenv.config)
+    const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
     const teacherEmail = process.env.TEACHER_ID || 'benwu@im.fju.edu.tw'
     const teacherPassword = process.env.TEACHER_PASSWORD || ''
+    
+    console.log(`Using teacher email: ${teacherEmail}`)
+    console.log(`Base URL: ${BASE_URL}`)
 
-    // Teacher context: real Firebase login
+    // Teacher context: real Firebase login via /signin page
     const teacherCtx = await browser.newContext()
     const teacherPage = await teacherCtx.newPage()
-    console.log('Teacher navigating to monitor page')
-    await teacherPage.goto(`http://localhost:3000/class/${demoClassId}/monitor`, { waitUntil: 'domcontentloaded' })
-    await teacherPage.waitForTimeout(1000)
-
-    // Check if need to login (look for sign-in form or already logged in)
-    const signInBtn = teacherPage.locator('button:has-text("以 Email 登入")')
-    if (await signInBtn.count() > 0) {
-      console.log('Signing in teacher with real Firebase account')
-      await signInBtn.click()
+    
+    console.log('=== Teacher Authentication ===')
+    console.log('Navigating to /signin for teacher login')
+    await teacherPage.goto(`${BASE_URL}/signin`, { waitUntil: 'domcontentloaded' })
+    await teacherPage.waitForTimeout(1500)
+    
+    // Check if already logged in (look for logout button)
+    const logoutBtn = await teacherPage.$('button:has-text("登出")')
+    if (!logoutBtn) {
+      console.log('Not logged in yet, performing signin...')
       
-      // Wait for sign-in form
-      await teacherPage.waitForSelector('input[type="email"]', { timeout: 5000 })
-      await teacherPage.fill('input[type="email"]', teacherEmail)
+      // Fill email and password on signin page
+      await teacherPage.fill('input[placeholder="email@example.com"]', teacherEmail)
       await teacherPage.fill('input[type="password"]', teacherPassword)
-      await teacherPage.click('button:has-text("登入")')
+      console.log(`Filled credentials for: ${teacherEmail}`)
       
-      // Wait for redirect/reload
-      await teacherPage.waitForTimeout(2000)
+      // Click signin button
+      const loginBtn = teacherPage.locator('button:has-text("登入")')
+      const btnCount = await loginBtn.count()
+      console.log(`Login buttons found: ${btnCount}`)
+      if (btnCount > 0) {
+        await loginBtn.first().click()
+        console.log('Clicked signin button')
+      }
+      
+      // Wait for signin to complete (look for logout button)
+      try {
+        await teacherPage.waitForSelector('button:has-text("登出")', { timeout: 10000 })
+        console.log('✓ Signin successful - logout button appeared')
+      } catch (e) {
+        console.warn('⚠ Timeout waiting for logout button - signin may have failed')
+        console.warn('Continuing anyway to diagnose further issues...')
+      }
+    } else {
+      console.log('Already logged in - logout button exists')
     }
-
-    // Try to activate class if needed (look for select or activate button)
+    
+    // Navigate to monitor page
+    console.log('Navigating to monitor page')
+    await teacherPage.goto(`${BASE_URL}/class/monitor`, { waitUntil: 'domcontentloaded' })
+    await teacherPage.waitForTimeout(2000)
+    
+    // Activate class if needed
+    console.log('=== Class Activation ===')
     const selectLocator = teacherPage.locator('select')
     const selectCount = await selectLocator.count()
     console.log(`Select elements found: ${selectCount}`)
     
     if (selectCount > 0) {
-      console.log('Found class select, attempting to activate demo class')
-      try {
-        await selectLocator.selectOption('demo')
-      } catch (e) {
-        console.log('Select option failed, trying evaluate...')
-        await teacherPage.evaluate(() => {
-          const sel = document.querySelector('select')
-          if (sel && Array.from(sel.options).some(o => o.value === 'demo')) {
-            sel.value = 'demo'
-            sel.dispatchEvent(new Event('change', { bubbles: true }))
-          }
-        })
-      }
+      console.log(`Attempting to activate demo class...`)
+      await selectLocator.selectOption(demoClassId)
+      await teacherPage.waitForTimeout(500)
       
       const activateBtn = teacherPage.locator('button:has-text("啟動班級")')
       if (await activateBtn.count() > 0) {
         console.log('Clicking activate button')
         await activateBtn.click()
-        await teacherPage.waitForTimeout(1500)
-        // Reload to see activated class state
-        console.log('Reloading to see activated state')
-        await teacherPage.reload({ waitUntil: 'domcontentloaded' })
-        await teacherPage.waitForTimeout(1000)
+        await teacherPage.waitForTimeout(2000)
+        
+        // Wait for class to appear as activated
+        for (let i = 0; i < 5; i++) {
+          const header = await teacherPage.textContent('h1')
+          if (header && !header.includes('尚未啟動')) {
+            console.log(`✓ Class activated (${header?.trim()})`)
+            break
+          }
+          await teacherPage.waitForTimeout(1000)
+        }
       }
+    } else {
+      console.log('No select found - class may already be activated')
     }
-
-    // Refresh teacher page to ensure Firebase subscriptions are active
-    console.log('Refreshing teacher page to ensure Firebase subscriptions active')
+    
+    // Final refresh to ensure Firebase subscriptions are synced
+    await teacherPage.waitForTimeout(1000)
+    console.log('Refreshing monitor page to sync Firebase subscriptions')
     await teacherPage.reload({ waitUntil: 'domcontentloaded' })
-    await teacherPage.waitForTimeout(1500)
+    await teacherPage.waitForTimeout(2000)
 
     // Helper: perform student flow (set localStorage studentAuth -> reserve seat -> raise hand)
     const performStudentFlow = async (student) => {
