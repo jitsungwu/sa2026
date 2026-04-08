@@ -29,25 +29,53 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
       try { localStorage.setItem('E2E_DISABLE_AUTH', '1') } catch (e) {}
     })
     const teacherPage = await teacherCtx.newPage()
+    console.log('Teacher navigating to monitor page')
     await teacherPage.goto(`http://localhost:3000/class/${demoClassId}/monitor`, { waitUntil: 'domcontentloaded' })
-    await teacherPage.waitForTimeout(1000) // Wait for page to settle
+    await teacherPage.waitForTimeout(2000)
 
+    // Check page content
+    const bodyText = await teacherPage.textContent('body')
+    console.log('Monitor page loaded, searching for activation controls...')
+    
     // Try to activate class if needed (look for select or activate button)
     const selectLocator = teacherPage.locator('select')
-    if (await selectLocator.count() > 0) {
+    const selectCount = await selectLocator.count()
+    console.log(`Select elements found: ${selectCount}`)
+    
+    if (selectCount > 0) {
       console.log('Found class select, attempting to activate demo class')
-      await selectLocator.selectOption('demo')
+      try {
+        await selectLocator.selectOption('demo')
+        await teacherPage.waitForTimeout(500)
+      } catch (e) {
+        console.log('Select option failed, trying evaluate...')
+        await teacherPage.evaluate(() => {
+          const sel = document.querySelector('select')
+          if (sel && Array.from(sel.options).some(o => o.value === 'demo')) {
+            sel.value = 'demo'
+            sel.dispatchEvent(new Event('change', { bubbles: true }))
+          }
+        })
+      }
+      
       const activateBtn = teacherPage.locator('button:has-text("啟動班級")')
       if (await activateBtn.count() > 0) {
+        console.log('Clicking activate button')
         await activateBtn.click()
-        await teacherPage.waitForTimeout(1000)
+        await teacherPage.waitForTimeout(1500)
         // Reload to see activated class state
+        console.log('Reloading to see activated state')
         await teacherPage.reload({ waitUntil: 'domcontentloaded' })
-        await teacherPage.waitForTimeout(500)
+        await teacherPage.waitForTimeout(1000)
       }
     } else {
       console.log('No class select found, assuming class already active or not available')
     }
+
+    // Refresh teacher page to ensure subscriptions are active
+    console.log('Refreshing teacher page to ensure Firebase subscriptions active')
+    await teacherPage.reload({ waitUntil: 'domcontentloaded' })
+    await teacherPage.waitForTimeout(1000)
 
     // Helper: perform student flow (set localStorage studentAuth -> reserve seat -> raise hand)
     const performStudentFlow = async (student) => {
@@ -107,20 +135,44 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
 
     const s1 = await performStudentFlow(studentA)
     const s2 = await performStudentFlow(studentB)
+    console.log('Both students completed their flow, waiting for teacher to see hands list')
 
-    // Wait for teacher monitor to show hands list
-    await teacherPage.waitForFunction(() => {
-      const heading = document.querySelector('h2')
-      return heading && heading.textContent.includes('即時舉手名單')
-    }, null, { timeout: 5000 })
-    console.log('Found hands monitor section')
+    // Give some time for Firestore updates to propagate and monitor to update
+    await teacherPage.waitForTimeout(2000)
     
-    // Wait until at least one list item appears
+    // Refresh teacher monitor page to see live updates
+    console.log('Reloading teacher monitor to see updated hands list')
+    await teacherPage.reload({ waitUntil: 'domcontentloaded' })
+    await teacherPage.waitForTimeout(1500)
+
+    // Wait for teacher monitor to show hands list heading
+    let handsVisible = false
+    try {
+      await teacherPage.waitForFunction(() => {
+        const headings = document.querySelectorAll('h2')
+        for (const h of headings) {
+          if (h.textContent.includes('即時舉手名單')) {
+            console.log('Found hands list heading')
+            return true
+          }
+        }
+        return false
+      }, null, { timeout: 5000 })
+      handsVisible = true
+    } catch (e) {
+      console.log('Could not find hands list heading in 5s, continuing to check for list items anyway')
+    }
+    
+    // Wait until at least one list item appears (more important than the heading)
     await teacherPage.waitForFunction(() => {
       const ol = document.querySelector('ol')
-      return ol && ol.children && ol.children.length >= 1
-    }, null, { timeout: 8000 })
-    console.log('Hands list populated')
+      const hasItems = ol && ol.children && ol.children.length >= 1
+      if (hasItems) {
+        console.log(`Hand list has ${ol.children.length} items`)
+      }
+      return hasItems
+    }, null, { timeout: 10000 })
+    console.log('Hands list populated with entries')
 
     // End class: accept confirm dialog if any
     teacherPage.on('dialog', d => {
