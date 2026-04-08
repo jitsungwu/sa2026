@@ -41,7 +41,20 @@ export default function EndClassButton({ classId, classOwner, currentUser }) {
         }
 
         try {
-          await setDoc(doc(db, 'classes', classId), { active: false, endedAt: serverTimestamp() }, { merge: true })
+          // 清除座位登記紀錄（layout）- 使用 merge: false 完全覆蓋為空對象
+          await setDoc(doc(db, `classes/${classId}/layout`, 'grid'), {}, { merge: false })
+        } catch (err) {
+          console.error('無法清除座位登記紀錄', err)
+        }
+
+        try {
+          // 標記課程為結束，並清除報告組相關欄位
+          await setDoc(doc(db, 'classes', classId), { 
+            active: false, 
+            endedAt: serverTimestamp(),
+            presentingGroupId: null,
+            presentingScorerOwnerId: null
+          }, { merge: true })
         } catch (err) {
           console.error('無法在 Firestore 標記課程為結束', err)
         }

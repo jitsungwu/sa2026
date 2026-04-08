@@ -224,3 +224,39 @@ Scenario 1：查看小組累計點數
   - 組別 ID 將由數字改為字串處理，並保留前置零以確保排序一致性（例如 `"04"`、`"10"`），避免字串排序時 `"10"` 在 `"2"` 之前的狀況。
   - 僅授權的老師（Teacher role）可以設定或變更 `presentingGroupId`；請在 Firestore Security Rules 或 API 層落實權限檢查以防止非授權寫入。
   - 前端應使用 `onSnapshot` 監聽 `classes/{classId}.presentingGroupId` 的變更，並在變更時即時切換報告畫面或還原為舉手畫面。
+
+---
+
+### Issue #32: 切換班級時清空舉手及座位紀錄
+- State: OPEN
+- Labels: -
+- URL: https://github.com/jitsungwu/sa2026/issues/32
+
+身為 授課教師，我想要 在介面中自由切換不同班級，因此我可以 針對不同授課時段進行獨立的數據記錄。
+
+接受條件
+
+Scenario 1：啟動班級
+- Given (前提)：課程還沒啟動
+- When：教師可以登入並選擇要啟動的班級
+- Then：教師可看到班級的舉手狀況，學生可以舉手
+
+Status: **COMPLETED** — 已由 [教師：在介面中切換班級](https://github.com/jitsungwu/sa2026/issues/3) 驗證並完成。
+
+Scenario 2：課程結束
+- Given (前提)：課程已經啟動
+- When：教師可以登入並結束課程
+- Then：所有舉手狀況會被清空，並且學生無法舉手，所有座位登記紀錄也要一併清空
+
+相依註記：
+- Parent issue: [教師：在介面中切換班級](https://github.com/jitsungwu/sa2026/issues/3)
+
+測試備註：
+- Scenario 1 已完成並可視為已驗證（參見 Issue #3）。
+- Scenario 2 尚未完成，需透過 e2e 測試驗證：教師結束課程後，系統應清空 `hands`、`layout` 或相關座位登記紀錄，且學生無法再舉手。
+
+建議 e2e 測試步驟（簡略）：
+1. 啟動班級並建立多個舉手/座位登記狀態。
+2. 執行教師「結束課程」操作。
+3. 斷言：所有舉手狀態為空，座位登記清空，學生無法呼叫舉手API或UI顯示無法舉手。
+

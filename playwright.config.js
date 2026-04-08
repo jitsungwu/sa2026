@@ -5,7 +5,7 @@ export default defineConfig({
   // Run tests sequentially to respect stateful dependencies between tests
   workers: 1,
   fullyParallel: false,
-  timeout: 30 * 1000,
+  timeout: 90 * 1000,  // Increased to 90s for complex E2E flows with Firebase
   use: {
     headless: true,
     viewport: { width: 1280, height: 720 },
