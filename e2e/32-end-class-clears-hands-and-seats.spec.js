@@ -307,14 +307,23 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
     await s1.page.goto(`${BASE_URL}/class/${demoClassId}/seat-selection`, { waitUntil: 'domcontentloaded' })
     await s1.page.waitForTimeout(1500)
     
-    // Count buttons showing occupied seats (buttons with "第 XX 組" text)
-    const occupiedSeatButtons = await s1.page.locator('button:has-text("第 ")').count()
-    console.log(`Occupied seat buttons found: ${occupiedSeatButtons}`)
+    // Get all button texts and check if any show "第 01 組" or "第 02 組" format (occupied seats)
+    const allButtonTexts = await s1.page.locator('button').allTextContents()
+    console.log(`Total seat buttons: ${allButtonTexts.length}`)
     
-    if (occupiedSeatButtons === 0) {
-      console.log('✓ Seat layout cleared - all seats are available')
+    const occupiedSeats = allButtonTexts.filter(text => {
+      // Match pattern like "第 01 組" (occupied seat with group number)
+      return /^第 \d{2} 組$/.test(text.trim())
+    })
+    console.log(`Occupied seats (showing group numbers): ${occupiedSeats.length}`)
+    if (occupiedSeats.length > 0) {
+      console.log(`Occupied seat details: ${occupiedSeats.join(', ')}`)
+    }
+    
+    if (occupiedSeats.length === 0) {
+      console.log('✓ Seat layout fully cleared - no occupied seats detected')
     } else {
-      console.log('⚠ Found occupied seats after end-class (unexpected but may be due to timing)')
+      console.log(`⚠ ERROR: Still found ${occupiedSeats.length} occupied seats after end-class`)
     }
     
     console.log('End-class verification complete')
