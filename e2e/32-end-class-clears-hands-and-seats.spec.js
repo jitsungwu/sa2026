@@ -22,8 +22,8 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
     const demoClassId = 'demo'
     const studentA = all[0]
     const studentB = all[1]
-    const teacherEmail = process.env.TEST_TEACHER_EMAIL || 'benwu@im.fju.edu.tw'
-    const teacherPassword = process.env.TEST_TEACHER_PASSWORD || ''
+    const teacherEmail = process.env.TEACHER_ID || 'benwu@im.fju.edu.tw'
+    const teacherPassword = process.env.TEACHER_PASSWORD || ''
 
     // Teacher context: real Firebase login
     const teacherCtx = await browser.newContext()
