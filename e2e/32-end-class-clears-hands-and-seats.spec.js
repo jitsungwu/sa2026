@@ -174,6 +174,16 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
     }, null, { timeout: 10000 })
     console.log('Hands list populated with entries')
 
+    // Set a presenting group before ending class (to test that presentingGroupId is also cleared)
+    console.log(`Setting presenting group to ${studentA.groupId}`)
+    const presentingInput = teacherPage.locator('#presenting-group-input')
+    if (await presentingInput.count() > 0) {
+      await presentingInput.fill(String(studentA.groupId).padStart(2, '0'))
+      await teacherPage.click('button:has-text("設為報告組")')
+      await teacherPage.waitForTimeout(800)
+      console.log(`Presenting group set to ${studentA.groupId}`)
+    }
+
     // End class: accept confirm dialog if any
     teacherPage.on('dialog', d => {
       console.log('Dialog:', d.message())
@@ -186,6 +196,12 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
     // Assert: HandsMonitor shows empty state
     await expect(teacherPage.locator('text=目前沒有舉手紀錄')).toBeVisible({ timeout: 5000 })
     console.log('Hands cleared after ending class')
+
+    // Assert: presenting group is cleared (should show "無")
+    console.log('Verifying presenting group was cleared')
+    const presentingGroupText = await teacherPage.textContent('text=目前報告組')
+    expect(presentingGroupText).toContain('無')
+    console.log('Presenting group cleared confirmed')
 
     // Assert: seat-selection shows no occupied seats for a student
     console.log('Verifying seat layout cleared')
