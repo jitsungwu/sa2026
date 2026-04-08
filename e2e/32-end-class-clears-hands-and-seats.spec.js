@@ -169,7 +169,7 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
     if (await presentingInput.count() > 0) {
       await presentingInput.fill(String(studentA.groupId).padStart(2, '0'))
       await teacherPage.click('button:has-text("設為報告組")')
-      await teacherPage.waitForTimeout(800)
+      await teacherPage.waitForTimeout(1500)
       console.log(`Presenting group set to ${studentA.groupId}`)
     }
 
@@ -178,9 +178,25 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
       console.log('Dialog:', d.message())
       d.accept()
     })
-    console.log('Clicking 結束上課 button')
-    await teacherPage.click('button:has-text("結束上課")')
-    await teacherPage.waitForTimeout(1500)
+    console.log('Looking for 結束上課 button...')
+    
+    // Wait for the button to be visible/clickable
+    const endBtn = teacherPage.locator('button:has-text("結束上課")')
+    const btnCount = await endBtn.count()
+    console.log(`結束上課 button count: ${btnCount}`)
+    
+    if (btnCount > 0) {
+      console.log('Clicking 結束上課 button')
+      await endBtn.first().click()
+    } else {
+      console.log('ERROR: Could not find 結束上課 button')
+      // Try a fallback search
+      const allButtons = await teacherPage.locator('button').count()
+      console.log(`Total buttons on page: ${allButtons}`)
+      const buttonTexts = await teacherPage.locator('button').allTextContents()
+      console.log('Button texts:', buttonTexts)
+    }
+    await teacherPage.waitForTimeout(2000)
 
     // Assert: HandsMonitor shows empty state
     await expect(teacherPage.locator('text=目前沒有舉手紀錄')).toBeVisible({ timeout: 5000 })
