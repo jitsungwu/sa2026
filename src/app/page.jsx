@@ -1,8 +1,8 @@
 "use client"
 import React, { useEffect, useState } from 'react'
 import { db } from '../firebaseClient'
-import { collection, getDocs, doc, setDoc, serverTimestamp, query, where, onSnapshot } from '../lib/firestoreWrapper'
-import SeatGrid from '../components/SeatGrid'
+import { collection, getDocs, doc, setDoc, query, where, onSnapshot } from '../lib/firestoreWrapper'
+import SeatGridDisplay from '../components/SeatGridDisplay'
 
 export default function HomePage() {
   const [classes, setClasses] = useState([])
@@ -96,9 +96,12 @@ export default function HomePage() {
               <div>
                 <h2>📚 目前上課班級：{active.name}</h2>
                 
-                {/* 顯示座位表 */}
+                {/* 顯示座位表 - 使用可重用的 SeatGridDisplay 組件（唯讀模式） */}
                 <div style={{ marginTop: 20, marginBottom: 24 }}>
-                  <SeatGrid classId={activeClassId} activeClassOnly={true} />
+                  <SeatGridDisplay
+                    classId={activeClassId}
+                    interactive={false}
+                  />
                 </div>
 
                 {/* 組別選擇區 */}

@@ -1,15 +1,13 @@
 "use client"
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { db } from '../../../../firebaseClient'
-import { doc, onSnapshot } from 'firebase/firestore'
+import SeatGridDisplay from '../../../../../components/SeatGridDisplay'
 
 export default function SeatSelectionPage() {
   const params = useParams()
   const router = useRouter()
   const classId = params?.classId
   const [student, setStudent] = useState(null)
-  const [layout, setLayout] = useState({})
   const [loadingSeat, setLoadingSeat] = useState(false)
   const [message, setMessage] = useState(null)
 
@@ -24,40 +22,9 @@ export default function SeatSelectionPage() {
     }
   }, [])
 
-  // Subscribe to realtime layout updates
-  useEffect(() => {
-    if (!classId || !db) return
-    const layoutDocRef = doc(db, `classes/${classId}/layout`, 'grid')
-    const unsub = onSnapshot(layoutDocRef, (snap) => {
-      setLayout(snap.exists() ? snap.data() : {})
-    }, (err) => {
-      console.warn('layout onSnapshot error:', err)
-    })
-    return () => unsub()
-  }, [classId])
-
-  if (!student) {
-    return (
-      <div style={{ padding: 24 }}>
-        <p>未登入或登入已過期，請重新登入。</p>
-        <a href="/signin" style={{ color: '#0070f3', textDecoration: 'underline' }}>
-          回到登入頁面
-        </a>
-      </div>
-    )
-  }
-
-  const rows = 8
-
   const handleReserve = async (r, c) => {
     if (loadingSeat) return
     setMessage(null)
-    const occupant = (layout[r] || {})[c]
-    if (occupant && occupant !== String(student.groupId)) {
-      const formattedOccupant = String(occupant).padStart(2, '0')
-      setMessage({ type: 'error', text: `此位置已被第 ${formattedOccupant} 組選取` })
-      return
-    }
 
     setLoadingSeat(true)
     try {
@@ -95,6 +62,17 @@ export default function SeatSelectionPage() {
     }
   }
 
+  if (!student) {
+    return (
+      <div style={{ padding: 24 }}>
+        <p>未登入或登入已過期，請重新登入。</p>
+        <a href="/signin" style={{ color: '#0070f3', textDecoration: 'underline' }}>
+          回到登入頁面
+        </a>
+      </div>
+    )
+  }
+
   return (
     <div style={{ padding: 24 }}>
       <h1>座位選擇</h1>
@@ -105,58 +83,15 @@ export default function SeatSelectionPage() {
         <p><strong>班級：</strong> {student.classId}</p>
       </div>
 
-      {message && (
-        <div style={{ marginBottom: 12, padding: 10, borderRadius: 6, backgroundColor: message.type === 'error' ? '#ffe6e6' : '#e6ffed' }}>
-          {message.text}
-        </div>
-      )}
-
-      {/* Whiteboard marker at front (top) */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
-        <div style={{ width: 'calc(33.333% - 8px)', padding: '12px 16px', backgroundColor: '#8b5fbf', color: 'white', borderRadius: 8, textAlign: 'center', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
-          白板（前方）
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginBottom: 20 }}>
-        {/* Zones displayed left-to-right: left (6 rows), middle (8 rows), right (8 rows) */}
-        {/* Each zone occupies equal width */}
-        {[
-          { key: 'left', rows: 6, col: 1, label: '左區' },
-          { key: 'middle', rows: 8, col: 2, label: '中區' },
-          { key: 'right', rows: 8, col: 3, label: '右區' }
-        ].map((zone) => (
-          <div key={zone.key} style={{ textAlign: 'center', flex: 1 }}>
-            <div style={{ marginBottom: 8, fontWeight: 600 }}>{zone.label}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {Array.from({ length: zone.rows }).map((_, ri) => {
-                const r = ri + 1
-                const occupant = (layout[r] || {})[zone.col]
-                const isMine = occupant && String(occupant) === String(student.groupId)
-                const disabled = !!occupant && !isMine
-                return (
-                  <button
-                    key={`${zone.key}-r${r}`}
-                    disabled={disabled || loadingSeat}
-                    onClick={() => handleReserve(r, zone.col)}
-                    style={{
-                      height: 40,
-                      width: '100%',
-                      borderRadius: 4,
-                      border: '1px solid #ddd',
-                      backgroundColor: isMine ? '#ffd966' : (disabled ? '#f2f2f2' : 'white'),
-                      cursor: disabled ? 'not-allowed' : 'pointer',
-                      fontWeight: 600
-                    }}
-                  >
-                    {occupant ? `第 ${String(occupant).padStart(2, '0')} 組` : `${zone.label}第 ${r} 排`}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* 使用可重用的座位表組件 - 互動模式 */}
+      <SeatGridDisplay
+        classId={classId}
+        interactive={true}
+        currentGroupId={student.groupId}
+        onReserve={handleReserve}
+        loading={loadingSeat}
+        message={message}
+      />
 
       <div>
         <a
