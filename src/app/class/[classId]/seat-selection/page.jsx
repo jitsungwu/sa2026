@@ -1,7 +1,7 @@
 "use client"
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import SeatGridDisplay from '../../../../../components/SeatGridDisplay'
+import SeatGridDisplay from '../../../../components/SeatGridDisplay'
 
 export default function SeatSelectionPage() {
   const params = useParams()

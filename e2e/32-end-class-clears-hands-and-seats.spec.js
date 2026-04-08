@@ -145,32 +145,79 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
         seatSelected: false,
         timestamp: new Date().toISOString()
       }
-      await ctx.addInitScript((s) => { try { localStorage.setItem('studentAuth', s) } catch (e) {} }, JSON.stringify(auth))
+      // Set localStorage before navigating to page
+      await ctx.addInitScript((authStr) => { 
+        try { 
+          localStorage.setItem('studentAuth', authStr) 
+        } catch (e) { 
+          console.error('Failed to set localStorage:', e)
+        } 
+      }, JSON.stringify(auth))
+      
       const page = await ctx.newPage()
+      
+      // Navigate to seat-selection page
+      console.log(`Student ${student.account} navigating to seat-selection...`)
       await page.goto(`http://localhost:3000/class/${demoClassId}/seat-selection`, { waitUntil: 'domcontentloaded' })
-      await page.waitForTimeout(500)
+      console.log(`Navigated to seat-selection page`)
+      
+      // Wait for React to hydrate and component to render
+      await page.waitForTimeout(2000)
+      
+      // Diagnostic: check page status
+      const pageTitle = await page.title()
+      console.log(`Page title: "${pageTitle}"`)
+      
+      const h1Elements = await page.locator('h1').all()
+      console.log(`H1 elements found: ${h1Elements.length}`)
+      for (let i = 0; i < h1Elements.length; i++) {
+        const text = await h1Elements[i].textContent()
+        console.log(`  H1[${i}]: "${text}"`)
+      }
+      
+      const notLoggedInMsg = await page.locator('text=未登入或登入已過期').count()
+      console.log(`"未登入或登入已過期" message found: ${notLoggedInMsg > 0}`)
+      
+      const allButtons = await page.locator('button').all()
+      console.log(`Total buttons on page: ${allButtons.length}`)
+      
+      // Check localStorage value
+      const storedAuth = await page.evaluate(() => localStorage.getItem('studentAuth'))
+      console.log(`localStorage studentAuth: ${storedAuth ? 'SET' : 'NOT SET'}`)
 
       // Try to click the first available seat button (left/middle/right)
-      const zones = ['左區第', '中區第', '右區第']
+      // Using regular button selectors since zone buttons have text like "左區第 1 排"
+      const zones = ['左區', '中區', '右區']
       let reserved = false
       for (const z of zones) {
+        // More flexible selector - look for buttons containing zone label and "排"
         const btns = page.locator(`button:has-text("${z}")`)
         const count = await btns.count()
-        console.log(`Zone ${z}: found ${count} buttons`)
+        console.log(`Zone ${z}: found ${count} seat buttons`)
         if (count > 0) {
           for (let i = 0; i < count; i++) {
             const b = btns.nth(i)
             const enabled = await b.isEnabled()
-            if (enabled) {
-              console.log(`Clicking enabled seat button ${i} in zone ${z}`)
+            const text = await b.textContent()
+            console.log(`Button ${i}: text="${text}", enabled=${enabled}`)
+            if (enabled && !text.includes('組')) {
+              console.log(`Clicking available seat button ${i} in zone ${z}`)
               await b.click()
               reserved = true
+              await page.waitForTimeout(500)
               break
             }
           }
         }
         if (reserved) break
       }
+      
+      if (!reserved) {
+        console.log(`*** FAILED: Unable to reserve seat for ${student.account}`)
+        // Take screenshot for debugging
+        await page.screenshot({ path: `test-results/seat-selection-debug-${student.account}.png` })
+      }
+      
       expect(reserved).toBeTruthy()
       console.log(`Student ${student.account} reserved seat`)
 
