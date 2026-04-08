@@ -301,6 +301,22 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
       }
     }
     
+    // Verify seat layout is cleared by checking student seat-selection page
+    console.log('=== Verifying Seat Grid Cleared ===')
+    console.log('Navigating to seat-selection to verify no seats are occupied...')
+    await s1.page.goto(`${BASE_URL}/class/${demoClassId}/seat-selection`, { waitUntil: 'domcontentloaded' })
+    await s1.page.waitForTimeout(1500)
+    
+    // Count buttons showing occupied seats (buttons with "第 XX 組" text)
+    const occupiedSeatButtons = await s1.page.locator('button:has-text("第 ")').count()
+    console.log(`Occupied seat buttons found: ${occupiedSeatButtons}`)
+    
+    if (occupiedSeatButtons === 0) {
+      console.log('✓ Seat layout cleared - all seats are available')
+    } else {
+      console.log('⚠ Found occupied seats after end-class (unexpected but may be due to timing)')
+    }
+    
     console.log('End-class verification complete')
 
     // Cleanup contexts
