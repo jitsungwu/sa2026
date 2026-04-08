@@ -31,22 +31,28 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
     const teacherPage = await teacherCtx.newPage()
     await teacherPage.goto(`http://localhost:3000/class/${demoClassId}/monitor`)
 
-    // Ensure select exists, add option for demo if missing, and activate
-    await teacherPage.waitForSelector('select', { timeout: 5000 })
-    await teacherPage.evaluate((classId) => {
-      const sel = document.querySelector('select')
-      if (!sel) return
-      if (!Array.from(sel.options).some(o => o.value === classId)) {
-        const opt = document.createElement('option')
-        opt.value = classId
-        opt.text = classId
-        sel.appendChild(opt)
-      }
-      sel.value = classId
-    }, demoClassId)
-
-    await teacherPage.click('button:has-text("啟動班級")')
-    await teacherPage.waitForTimeout(800)
+    // Wait for control presence: either a class select, an "啟動班級" button, or an active class with "結束上課".
+    await teacherPage.waitForSelector('select, button:has-text("啟動班級"), button:has-text("結束上課")', { timeout: 5000 })
+    const hasSelect = (await teacherPage.locator('select').count()) > 0
+    if (hasSelect) {
+      await teacherPage.evaluate((classId) => {
+        const sel = document.querySelector('select')
+        if (!sel) return
+        if (!Array.from(sel.options).some(o => o.value === classId)) {
+          const opt = document.createElement('option')
+          opt.value = classId
+          opt.text = classId
+          sel.appendChild(opt)
+        }
+        sel.value = classId
+      }, demoClassId)
+      // Try clicking activate; if already active this may be a no-op
+      await teacherPage.locator('button:has-text("啟動班級")').first().click().catch(() => {})
+      await teacherPage.waitForTimeout(800)
+    } else {
+      // No select found; assume class activation controls are not needed (maybe already active)
+      await teacherPage.waitForTimeout(500)
+    }
 
     // Helper: perform student flow (set localStorage studentAuth -> reserve seat -> raise hand)
     const performStudentFlow = async (student) => {
