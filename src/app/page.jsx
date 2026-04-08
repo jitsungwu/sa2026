@@ -7,7 +7,6 @@ import SeatGridDisplay from '../components/SeatGridDisplay'
 export default function HomePage() {
   const [classes, setClasses] = useState([])
   const [selectedClass, setSelectedClass] = useState(null)
-  const [selectedGroup, setSelectedGroup] = useState(1)
   const [activeClassId, setActiveClassId] = useState(null)
 
   useEffect(() => {
@@ -114,48 +113,14 @@ export default function HomePage() {
                 }}>
                   <h3 style={{ marginTop: 0 }}>進入課堂互動</h3>
                   <div style={{ marginTop: 12 }}>
-                    <label style={{ marginRight: 12 }}>選擇您的組別： </label>
-                    <select 
-                      value={selectedGroup} 
-                      onChange={(e) => setSelectedGroup(e.target.value)}
-                      style={{
-                        padding: 8,
-                        borderRadius: 4,
-                        border: '1px solid #ddd',
-                        fontSize: 16,
-                        marginRight: 12
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={() => {
+                        window.location.href = '/signin'
                       }}
                     >
-                      {active.groups.map((g) => {
-                        const displayGroup = String(g).padStart(2, '0')
-                        return (
-                          <option key={g} value={g}>
-                            第 {displayGroup} 組
-                          </option>
-                        )
-                      })}
-                    </select>
-
-                    <div style={{ marginTop: 12 }}>
-                      <button 
-                        className="btn btn-primary" 
-                        onClick={async () => {
-                          if (!active) return
-                          if (db) {
-                            try {
-                              await setDoc(doc(db, 'classes', active.id), { currentGroup: String(selectedGroup).padStart(2, '0') }, { merge: true })
-                            } catch (err) {
-                              console.error('無法設定類別組別到 Firestore', err)
-                            }
-                          }
-                          // navigate to student page and include selected group as query param
-                          window.location.href = `/class/student?group=${selectedGroup}`
-                        }}
-                      >
-                        進入學生介面
-                      </button>
-                      {/* 結束上課按鈕已移至老師管理頁面 */}
-                    </div>
+                      登入
+                    </button>
                   </div>
                 </div>
               </div>
