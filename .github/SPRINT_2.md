@@ -241,6 +241,8 @@ Scenario 1：啟動班級
 - When：教師可以登入並選擇要啟動的班級
 - Then：教師可看到班級的舉手狀況，學生可以舉手
 
+Status: **COMPLETED** — 已由 [教師：在介面中切換班級](https://github.com/jitsungwu/sa2026/issues/3) 驗證並完成。
+
 Scenario 2：課程結束
 - Given (前提)：課程已經啟動
 - When：教師可以登入並結束課程
@@ -248,3 +250,13 @@ Scenario 2：課程結束
 
 相依註記：
 - Parent issue: [教師：在介面中切換班級](https://github.com/jitsungwu/sa2026/issues/3)
+
+測試備註：
+- Scenario 1 已完成並可視為已驗證（參見 Issue #3）。
+- Scenario 2 尚未完成，需透過 e2e 測試驗證：教師結束課程後，系統應清空 `hands`、`layout` 或相關座位登記紀錄，且學生無法再舉手。
+
+建議 e2e 測試步驟（簡略）：
+1. 啟動班級並建立多個舉手/座位登記狀態。
+2. 執行教師「結束課程」操作。
+3. 斷言：所有舉手狀態為空，座位登記清空，學生無法呼叫舉手API或UI顯示無法舉手。
+
