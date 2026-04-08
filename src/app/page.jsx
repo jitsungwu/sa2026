@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import { db } from '../firebaseClient'
 import { collection, getDocs, doc, setDoc, serverTimestamp, query, where, onSnapshot } from '../lib/firestoreWrapper'
+import SeatGrid from '../components/SeatGrid'
 
 export default function HomePage() {
   const [classes, setClasses] = useState([])
@@ -84,37 +85,74 @@ export default function HomePage() {
         {!activeClassId ? (
           <div>
             <h2>還沒開始上課</h2>
+            <p style={{ color: '#666' }}>請等待教師啟動課堂...</p>
           </div>
         ) : (
-          // 班級已啟動：顯示該班級與組別選擇
+          // 班級已啟動：顯示該班級、座位表與組別選擇
           (() => {
             const active = classes.find(c => c.id === activeClassId) || selectedClass
             if (!active) return <div>班級資料尚未載入</div>
             return (
               <div>
-                <h2>目前上課班級：{active.name}</h2>
-                <div style={{ marginTop: 12 }}>
-                  <label>選擇組別： </label>
-                  <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)}>
-                    {active.groups.map((g) => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
+                <h2>📚 目前上課班級：{active.name}</h2>
+                
+                {/* 顯示座位表 */}
+                <div style={{ marginTop: 20, marginBottom: 24 }}>
+                  <SeatGrid classId={activeClassId} activeClassOnly={true} />
+                </div>
+
+                {/* 組別選擇區 */}
+                <div style={{ 
+                  padding: 16, 
+                  backgroundColor: '#f9f9f9', 
+                  borderRadius: 8, 
+                  border: '1px solid #eee',
+                  marginTop: 20
+                }}>
+                  <h3 style={{ marginTop: 0 }}>進入課堂互動</h3>
+                  <div style={{ marginTop: 12 }}>
+                    <label style={{ marginRight: 12 }}>選擇您的組別： </label>
+                    <select 
+                      value={selectedGroup} 
+                      onChange={(e) => setSelectedGroup(e.target.value)}
+                      style={{
+                        padding: 8,
+                        borderRadius: 4,
+                        border: '1px solid #ddd',
+                        fontSize: 16,
+                        marginRight: 12
+                      }}
+                    >
+                      {active.groups.map((g) => {
+                        const displayGroup = String(g).padStart(2, '0')
+                        return (
+                          <option key={g} value={g}>
+                            第 {displayGroup} 組
+                          </option>
+                        )
+                      })}
+                    </select>
 
                     <div style={{ marginTop: 12 }}>
-                    <button className="btn btn-primary" onClick={async () => {
-                      if (!active) return
-                      if (db) {
-                        try {
-                          await setDoc(doc(db, 'classes', active.id), { currentGroup: selectedGroup }, { merge: true })
-                        } catch (err) {
-                          console.error('無法設定類別組別到 Firestore', err)
-                        }
-                      }
-                      // navigate to student page and include selected group as query param
-                      window.location.href = `/class/student?group=${selectedGroup}`
-                    }}>學生介面</button>
-                    {/* 結束上課按鈕已移至老師管理頁面 */}
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={async () => {
+                          if (!active) return
+                          if (db) {
+                            try {
+                              await setDoc(doc(db, 'classes', active.id), { currentGroup: String(selectedGroup).padStart(2, '0') }, { merge: true })
+                            } catch (err) {
+                              console.error('無法設定類別組別到 Firestore', err)
+                            }
+                          }
+                          // navigate to student page and include selected group as query param
+                          window.location.href = `/class/student?group=${selectedGroup}`
+                        }}
+                      >
+                        進入學生介面
+                      </button>
+                      {/* 結束上課按鈕已移至老師管理頁面 */}
+                    </div>
                   </div>
                 </div>
               </div>
