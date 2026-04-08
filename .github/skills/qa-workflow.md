@@ -27,8 +27,11 @@ applyTo:
 ### � Authentication & Environment Requirements
 - **Firebase 登入策略**：
   - ⚠️ **必須使用真實 Firebase 登入**（禁止使用 E2E_DISABLE_AUTH bypass）
-  - 在 Playwright tests 中，使用實際帳號進行 login（teacher: `benwu@im.fju.edu.tw`、students: 來自 `e2e/test-accounts.json` 的帳號）
-  - 環境變數 `TEST_TEACHER_PASSWORD` 應在 `.env.local` 中設置
+  - 在 Playwright tests 中，使用實際帳號進行 login
+  - 環境變數已於 `.env.local` 中設置：
+    - `TEST_TEACHER_EMAIL`：教師登入信箱
+    - `TEST_TEACHER_PASSWORD`：教師登入密碼
+  - 學生測試帳號來自 `e2e/test-accounts.json`（預設帳號密碼為學號）
 - **PowerShell Compatibility**：
   - ⚠️ **只使用 PowerShell 原生 cmdlet**，勿使用 `grep`, `tail`, `sed`, `head` 等 Unix 工具
   - 替代方案：
