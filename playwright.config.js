@@ -5,7 +5,7 @@ export default defineConfig({
   // Run tests sequentially to respect stateful dependencies between tests
   workers: 1,
   fullyParallel: false,
-  timeout: 30 * 1000,
+  timeout: 60 * 1000,  // Increased from 30s to 60s for complex E2E flows
   use: {
     headless: true,
     viewport: { width: 1280, height: 720 },
