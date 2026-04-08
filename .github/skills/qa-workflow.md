@@ -24,7 +24,21 @@ applyTo:
   - **禁止** 在測試腳本中使用 `connectFirestoreEmulator` 或 `connectAuthEmulator`。
   - 測試必須指向雲端開發環境 (Cloud Staging) 或使用純 Mock Data。
 
-### 🔐 Test Accounts
+### � Authentication & Environment Requirements
+- **Firebase 登入策略**：
+  - ⚠️ **必須使用真實 Firebase 登入**（禁止使用 E2E_DISABLE_AUTH bypass）
+  - 在 Playwright tests 中，使用實際帳號進行 login（teacher: `benwu@im.fju.edu.tw`、students: 來自 `e2e/test-accounts.json` 的帳號）
+  - 環境變數 `TEST_TEACHER_PASSWORD` 應在 `.env.local` 中設置
+- **PowerShell Compatibility**：
+  - ⚠️ **只使用 PowerShell 原生 cmdlet**，勿使用 `grep`, `tail`, `sed`, `head` 等 Unix 工具
+  - 替代方案：
+    - `grep` → `Select-String`
+    - `tail` → `Get-Content | Select-Object -Last`
+    - `head` → `Get-Content | Select-Object -First`
+    - `sed` → PowerShell string methods or `%{ ... }`
+  - 在 Windows 環境下測試指令前，先驗證指令相容性
+
+### �🔐 Test Accounts
 - 測試帳號清單參考：[`e2e/TEST_ACCOUNTS.md`](../../e2e/TEST_ACCOUNTS.md)
 - 帳號數據來源：[`.github/Group_list_2026-04-04(demo).xlsx`](.github/Group_list_2026-04-04(demo).xlsx)
 - 環境變數：`.env.local` 中定義 `TEST_CLASS_ID`、`TEST_STUDENT_ACCOUNT`、`TEST_STUDENT_GROUP_ID`

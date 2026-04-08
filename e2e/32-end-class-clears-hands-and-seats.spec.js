@@ -3,9 +3,9 @@ import fs from 'fs'
 import path from 'path'
 
 // E2E (UI-only): Issue #32 - Scenario 2
-// Flow (UI only):
-//  - Teacher (no-auth E2E mode) activates class `demo`
-//  - Two students (from e2e/test-accounts.json) reserve seats and raise hands via UI
+// Flow (UI only, using real Firebase login):
+//  - Teacher (real email login via Firebase) activates class `demo`
+//  - Two students (from e2e/test-accounts.json) sign in and reserve seats, raise hands via UI
 //  - Teacher ends class via UI
 //  - Assert UI shows no hands and seat layout cleared
 
@@ -22,21 +22,32 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
     const demoClassId = 'demo'
     const studentA = all[0]
     const studentB = all[1]
+    const teacherEmail = process.env.TEST_TEACHER_EMAIL || 'benwu@im.fju.edu.tw'
+    const teacherPassword = process.env.TEST_TEACHER_PASSWORD || ''
 
-    // Teacher context: enable E2E no-auth mode via localStorage, activate class if needed
+    // Teacher context: real Firebase login
     const teacherCtx = await browser.newContext()
-    await teacherCtx.addInitScript(() => {
-      try { localStorage.setItem('E2E_DISABLE_AUTH', '1') } catch (e) {}
-    })
     const teacherPage = await teacherCtx.newPage()
     console.log('Teacher navigating to monitor page')
     await teacherPage.goto(`http://localhost:3000/class/${demoClassId}/monitor`, { waitUntil: 'domcontentloaded' })
-    await teacherPage.waitForTimeout(2000)
+    await teacherPage.waitForTimeout(1000)
 
-    // Check page content
-    const bodyText = await teacherPage.textContent('body')
-    console.log('Monitor page loaded, searching for activation controls...')
-    
+    // Check if need to login (look for sign-in form or already logged in)
+    const signInBtn = teacherPage.locator('button:has-text("以 Email 登入")')
+    if (await signInBtn.count() > 0) {
+      console.log('Signing in teacher with real Firebase account')
+      await signInBtn.click()
+      
+      // Wait for sign-in form
+      await teacherPage.waitForSelector('input[type="email"]', { timeout: 5000 })
+      await teacherPage.fill('input[type="email"]', teacherEmail)
+      await teacherPage.fill('input[type="password"]', teacherPassword)
+      await teacherPage.click('button:has-text("登入")')
+      
+      // Wait for redirect/reload
+      await teacherPage.waitForTimeout(2000)
+    }
+
     // Try to activate class if needed (look for select or activate button)
     const selectLocator = teacherPage.locator('select')
     const selectCount = await selectLocator.count()
@@ -46,7 +57,6 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
       console.log('Found class select, attempting to activate demo class')
       try {
         await selectLocator.selectOption('demo')
-        await teacherPage.waitForTimeout(500)
       } catch (e) {
         console.log('Select option failed, trying evaluate...')
         await teacherPage.evaluate(() => {
@@ -68,14 +78,12 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
         await teacherPage.reload({ waitUntil: 'domcontentloaded' })
         await teacherPage.waitForTimeout(1000)
       }
-    } else {
-      console.log('No class select found, assuming class already active or not available')
     }
 
-    // Refresh teacher page to ensure subscriptions are active
+    // Refresh teacher page to ensure Firebase subscriptions are active
     console.log('Refreshing teacher page to ensure Firebase subscriptions active')
     await teacherPage.reload({ waitUntil: 'domcontentloaded' })
-    await teacherPage.waitForTimeout(1000)
+    await teacherPage.waitForTimeout(1500)
 
     // Helper: perform student flow (set localStorage studentAuth -> reserve seat -> raise hand)
     const performStudentFlow = async (student) => {
