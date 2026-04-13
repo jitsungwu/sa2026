@@ -18,6 +18,9 @@ test('teacher signs in, activates class via monitor, and saves storageState', as
     test.skip(!email || !password, 'TEACHER_ID or TEACHER_PASSWORD not provided in .env.local')
     // Not signed in — perform signin
     await page.goto(`${base}/signin`)
+    // Click "教師登入" button to show teacher form
+    await page.click('button:has-text("教師登入")')
+    await page.waitForSelector('input[placeholder="email@example.com"]', { timeout: 5000 })
     await page.fill('input[placeholder="email@example.com"]', email)
     await page.fill('input[type="password"]', password)
     await page.click('button:has-text("登入")')
