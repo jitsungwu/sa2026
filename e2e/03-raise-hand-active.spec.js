@@ -17,6 +17,9 @@ test('student raise & cancel hand is reflected in teacher monitor', async ({ bro
   if (!loggedIn) {
     if (!email || !password) test.skip('TEACHER_ID or TEACHER_PASSWORD not provided in .env.local')
     await monitorPage.goto(`${base}/signin`)
+    // 點擊「教師登入」按鈕以顯示登入表單
+    await monitorPage.click('button:has-text("教師登入")')
+    await monitorPage.waitForSelector('input[placeholder="email@example.com"]', { timeout: 5000 })
     await monitorPage.fill('input[placeholder="email@example.com"]', email)
     await monitorPage.fill('input[type="password"]', password)
     await monitorPage.click('button:has-text("登入")')
@@ -68,7 +71,8 @@ test('student raise & cancel hand is reflected in teacher monitor', async ({ bro
   // Student context: navigate to student page with participantId and group query params
   const studentContext = await browser.newContext()
   const studentPage = await studentContext.newPage()
-  await studentPage.goto(`${base}/class/student?participantId=e2e_student_1&group=1`, { waitUntil: 'domcontentloaded' })
+  // 使用 group=01 格式（以 group 作为文档 ID）
+  await studentPage.goto(`${base}/class/student?participantId=e2e_student_1&group=01`, { waitUntil: 'domcontentloaded' })
   
   // Wait for the StudentPage h1 to show the active class ID (ensures Firestore onSnapshot has fired and classId is set)
   // This indicates StudentClient has received classId and should render RaiseHandButton
@@ -81,16 +85,17 @@ test('student raise & cancel hand is reflected in teacher monitor', async ({ bro
   await studentPage.click('text=舉手')
   await expect(studentPage.locator('text=已舉手')).toBeVisible({ timeout: 7000 })
 
-  // Wait for the monitor to receive the raised hand and show the owner entry
-  const ownerLocator = monitorPage.locator('li[data-owner="e2e_student_1"]')
-  await ownerLocator.waitFor({ timeout: 15000 })
-  await expect(ownerLocator).toContainText('組別')
-  await expect(ownerLocator).toContainText('1')
+  // Wait for the monitor to receive the raised hand and show the group entry
+  // 新的数据模型中，文档 ID 就是 group（data-group="01"）
+  const groupLocator = monitorPage.locator('li[data-group="01"]')
+  await groupLocator.waitFor({ timeout: 15000 })
+  await expect(groupLocator).toContainText('組別')
+  await expect(groupLocator).toContainText('01')
 
   await studentPage.click('text=取消舉手')
   await expect(studentPage.locator('button:has-text("舉手")')).toBeVisible({ timeout: 7000 })
 
-  await expect(monitorPage.locator('li[data-owner="e2e_student_1"]')).toHaveCount(0, { timeout: 15000 })
+  await expect(monitorPage.locator('li[data-group="01"]')).toHaveCount(0, { timeout: 15000 })
 
   await studentContext.close()
   await teacherContext.close()

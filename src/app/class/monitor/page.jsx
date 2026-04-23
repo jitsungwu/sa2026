@@ -6,7 +6,7 @@ import EndClassButton from '../../../components/EndClassButton'
 import { auth, signInWithEmail, createAccountWithEmail, signOutUser, db } from '../../../firebaseClient'
 import SignInForm from '../../../components/SignInForm'
 import { onAuthStateChanged } from 'firebase/auth'
-import { collection, getDocs, doc, setDoc, serverTimestamp, query, where, onSnapshot } from '../../../lib/firestoreWrapper'
+import { collection, getDocs, doc, setDoc, serverTimestamp, query, where, onSnapshot, deleteDoc, getDoc } from '../../../lib/firestoreWrapper'
 
 export default function MonitorPage() {
   const ALLOWED_TEACHER_EMAIL = process.env.NEXT_PUBLIC_ALLOWED_TEACHER_EMAIL || 'benwu@im.fju.edu.tw'
@@ -196,12 +196,37 @@ export default function MonitorPage() {
               setClassId(selected)
               if (db) {
                 try {
-                  await setDoc(doc(db, 'classes', selected), {
-                    name: classes.find(c => c.id === selected)?.name || selected,
+                  const classRef = doc(db, 'classes', selected)
+                  
+                  // 1. 刪除所有 hands_raised 文檔
+                  const handsRef = collection(db, 'classes', selected, 'hands_raised')
+                  const handsSnap = await getDocs(handsRef)
+                  const deleteHandsOps = handsSnap.docs.map(d => deleteDoc(doc(db, 'classes', selected, 'hands_raised', d.id)))
+                  if (deleteHandsOps.length > 0) await Promise.all(deleteHandsOps)
+                  
+                  // 2. 刪除所有 participation_logs 文檔
+                  const logsRef = collection(db, 'classes', selected, 'participation_logs')
+                  const logsSnap = await getDocs(logsRef)
+                  const deleteLogsOps = logsSnap.docs.map(d => deleteDoc(doc(db, 'classes', selected, 'participation_logs', d.id)))
+                  if (deleteLogsOps.length > 0) await Promise.all(deleteLogsOps)
+                  
+                  // 3. 讀取現有班級文檔保留其他字段
+                  const classSnap = await getDoc(classRef)
+                  const existingData = classSnap.exists() ? classSnap.data() : {}
+                  
+                  // 4. 啟動班級並明確重置 scores（完全覆蓋）
+                  const selectedClass = classes.find(c => c.id === selected)
+                  await setDoc(classRef, {
+                    ...existingData,
+                    name: selectedClass?.name || selected,
                     active: true,
                     activatedAt: serverTimestamp(),
                     activatedBy: user?.uid || null,
-                  }, { merge: true })
+                    scores: {},  // 明確清空分數
+                    scoresLastUpdate: serverTimestamp()
+                  })
+                  
+                  console.log('✅ 班級已啟動並清除舊數據（scores: {}）', selected)
                 } catch (err) {
                   console.error('無法在 Firestore 啟動班級', err)
                 }

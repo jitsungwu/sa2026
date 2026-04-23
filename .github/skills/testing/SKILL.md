@@ -1,5 +1,5 @@
 ---
-name: qa-workflow
+name: testing
 description: "Use when running E2E tests or unit tests. Automatically manage Vitest and Playwright test execution with environment validation, pre-checks, per-check confirmation points, and cleanup."
 applyTo:
   - "**/*.test.ts"
@@ -42,13 +42,13 @@ applyTo:
   - 在 Windows 環境下測試指令前，先驗證指令相容性
 
 ### �🔐 Test Accounts
-- 測試帳號清單參考：[`e2e/TEST_ACCOUNTS.md`](../../e2e/TEST_ACCOUNTS.md)
-- 帳號數據來源：[`.github/Group_list_2026-04-04(demo).xlsx`](.github/Group_list_2026-04-04(demo).xlsx)
+- 測試帳號清單參考：[TEST_ACCOUNTS.md](../../../e2e/TEST_ACCOUNTS.md)
+- 帳號數據來源：[Group_list_2026-04-04(demo).xlsx](../../../e2e/Group_list_2026-04-04(demo).xlsx)
 - 環境變數：`.env.local` 中定義 `TEST_CLASS_ID`、`TEST_STUDENT_ACCOUNT`、`TEST_STUDENT_GROUP_ID`
 - ⚠️ **重要**：僅使用已完成 signup 且記錄在案的帳號進行測試，避免測試數據汙染
 
 ### 📋 Test Account Pool Management
-- **帳號池位置**: [e2e/test-accounts.json](../../e2e/test-accounts.json)
+- **帳號池位置**: [test-accounts.json](../../../e2e/test-accounts.json)
 - **結構**:
   - `disponible`: 可用的帳號陣列
   - `used`: 已使用過的帳號歷史紀錄

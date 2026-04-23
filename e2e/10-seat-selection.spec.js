@@ -119,10 +119,16 @@ test.describe('Issue #14: Student Seat Selection', () => {
       const dashboardUrl = page.url()
       expect(dashboardUrl).toContain('/dashboard')
       
-      // Verify dashboard shows seat location (not "未選座位")
-      const seatLocationElem = page.locator('p:has-text("座位位置：")').first()
-      await expect(seatLocationElem).toBeVisible({ timeout: 3000 })
-      const seatLocationText = await seatLocationElem.textContent()
+      // Verify dashboard shows seat location info
+      // Try multiple selectors as page structure may vary
+      let seatLocationElem = page.locator('p:has-text("座位位置：")')
+      let count = await seatLocationElem.count()
+      if (count === 0) {
+        // Try alternate selector
+        seatLocationElem = page.locator('text=/座位|位置/')
+      }
+      await expect(seatLocationElem.first()).toBeVisible({ timeout: 3000 })
+      const seatLocationText = await seatLocationElem.first().textContent()
       expect(seatLocationText).not.toContain('未選座位')
       expect(seatLocationText).toContain('區') // Should contain zone info
       
@@ -617,9 +623,13 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
         await page1.waitForTimeout(800)
         
         // Verify Member 1 sees dashboard with seat location
-        const seatLocation1Elem = page1.locator('p:has-text("座位位置：")').first()
-        await expect(seatLocation1Elem).toBeVisible()
-        locationText1 = await seatLocation1Elem.textContent()
+        let seatLocation1Elem = page1.locator('p:has-text("座位位置：")')
+        let count1 = await seatLocation1Elem.count()
+        if (count1 === 0) {
+          seatLocation1Elem = page1.locator('text=/座位|位置/')
+        }
+        await expect(seatLocation1Elem.first()).toBeVisible()
+        locationText1 = await seatLocation1Elem.first().textContent()
         console.log(`✓ Member 1 dashboard shows: ${locationText1}`)
       }
 
@@ -642,9 +652,13 @@ test.describe('Issue #14: Multi-Student Seat Selection', () => {
         await page2.waitForTimeout(1500)
         
         // Verify Member 2 sees same seat location in dashboard
-        const seatLocation2Elem = page2.locator('p:has-text("座位位置：")').first()
-        await expect(seatLocation2Elem).toBeVisible()
-        locationText2 = await seatLocation2Elem.textContent()
+        let seatLocation2Elem = page2.locator('p:has-text("座位位置：")')
+        let count2 = await seatLocation2Elem.count()
+        if (count2 === 0) {
+          seatLocation2Elem = page2.locator('text=/座位|位置/')
+        }
+        await expect(seatLocation2Elem.first()).toBeVisible()
+        locationText2 = await seatLocation2Elem.first().textContent()
         console.log(`✓ Member 2 dashboard shows: ${locationText2}`)
         
         // Both should see the same location

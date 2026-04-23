@@ -1,5 +1,5 @@
 import { db } from '../../../firebaseClient'
-import { doc, updateDoc, collection, addDoc, serverTimestamp, getDoc } from '../../../lib/firestoreWrapper'
+import { doc, updateDoc, collection, addDoc, serverTimestamp, getDoc, writeBatch, increment } from '../../../lib/firestoreWrapper'
 
 export async function POST(request) {
   try {
@@ -20,8 +20,8 @@ export async function POST(request) {
       )
     }
 
-    // Get the hand document to verify group
-    const handRef = doc(db, 'hands_raised', handId)
+    // Get the hand document from sub-collection to verify group
+    const handRef = doc(db, 'classes', classId, 'hands_raised', handId)
     const handSnap = await getDoc(handRef)
 
     if (!handSnap.exists()) {
@@ -54,8 +54,12 @@ export async function POST(request) {
       )
     }
 
-    // Mark hand as resolved
-    await updateDoc(handRef, {
+    // ✨ 優化：使用 Batch Write 原子操作
+    // 同時更新：舉手記錄 + 審計日誌 + 積分快取
+    const batch = writeBatch(db)
+
+    // 1. 標記舉手為已處理
+    batch.update(handRef, {
       active: false,
       resolved: true,
       resolvedScore: points,
@@ -63,9 +67,12 @@ export async function POST(request) {
       resolvedAt: serverTimestamp()
     })
 
-    // Add to participation_logs
-    const logRef = await addDoc(collection(db, 'participation_logs'), {
-      classId,
+    // 2. 寫入審計日誌到子集合
+    const logRef = doc(
+      collection(db, `classes/${classId}/participation_logs`),
+      `${Date.now()}-${Math.random().toString(36).substring(7)}`
+    )
+    batch.set(logRef, {
       group: handData.group,
       points,
       timestamp: serverTimestamp(),
@@ -74,11 +81,21 @@ export async function POST(request) {
       givenByRole: 'presenting_scorer'
     })
 
+    // 3. 更新積分快取 (classes.scores) ⚡ 關鍵改進
+    batch.update(classRef, {
+      [`scores.${handData.group}`]: increment(points),
+      scoresLastUpdate: serverTimestamp()
+    })
+
+    await batch.commit()
+
     return Response.json(
       { 
         success: true, 
         logId: logRef.id,
-        message: '給分成功'
+        message: '給分成功',
+        group: handData.group,
+        points
       },
       { status: 200 }
     )

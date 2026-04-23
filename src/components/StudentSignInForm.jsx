@@ -1,10 +1,12 @@
 "use client"
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useStudentAuth } from '../contexts/StudentAuthContext'
 import { signInWithEmail } from '../firebaseClient'
 
 export default function StudentSignInForm({ onSuccess, onClose }) {
   const router = useRouter()
+  const { updateStudentInfo } = useStudentAuth()
   const [account, setAccount] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -36,16 +38,16 @@ export default function StudentSignInForm({ onSuccess, onClose }) {
         return
       }
 
-      // 登入成功，儲存學生資訊到 localStorage
+      // 登入成功，更新 Context 中的學生資訊（不再使用 localStorage）
       const studentInfo = data.student
-      localStorage.setItem('studentAuth', JSON.stringify({
+      updateStudentInfo({
         account: studentInfo.account,
         name: studentInfo.name,
         groupId: studentInfo.groupId,
         classId: studentInfo.classId,
         seatSelected: studentInfo.seatSelected,
         timestamp: new Date().toISOString()
-      }))
+      })
 
       if (onSuccess) {
         onSuccess(studentInfo)

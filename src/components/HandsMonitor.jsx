@@ -1,7 +1,7 @@
 "use client"
 import React, { useEffect, useState } from "react"
 import { db } from "../firebaseClient"
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDocs } from "../lib/firestoreWrapper"
+import { collection, query, where, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, getDocs, writeBatch, getDoc } from "../lib/firestoreWrapper"
 
 export default function HandsMonitor({ classId, isOwner }) {
   const [hands, setHands] = useState([])
@@ -10,16 +10,15 @@ export default function HandsMonitor({ classId, isOwner }) {
 
   useEffect(() => {
     if (!classId) return
-    const col = collection(db, "hands_raised")
-    const q = query(col, where("classId", "==", classId), where("active", "==", true), orderBy("timestamp", "asc"))
+    // 从 classes/{classId}/hands_raised 子集合读取（文档 ID 是 group）
+    const col = collection(db, "classes", classId, "hands_raised")
+    const q = query(col, where("active", "==", true), orderBy("timestamp", "asc"))
     const unsub = onSnapshot(
       q,
       (snapshot) => {
+        // 每个文档 ID 是唯一的 group，所以不需要去重
         const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
-        const byOwner = {}
-        all.forEach(h => { if (h && h.ownerId) byOwner[h.ownerId] = h })
-        const unique = Object.values(byOwner)
-        setHands(unique)
+        setHands(all)
       },
       (err) => console.error('Hands monitor snapshot error:', err)
     )
@@ -51,10 +50,10 @@ export default function HandsMonitor({ classId, isOwner }) {
   const handleResetAll = async () => {
     if (!isOwner) { alert('僅老師可重置舉手紀錄'); return }
     try {
-      const colRef = collection(db, 'hands_raised')
-      const q = query(colRef, where('classId', '==', classId), where('active', '==', true))
+      const colRef = collection(db, 'classes', classId, 'hands_raised')
+      const q = query(colRef, where('active', '==', true))
       const snap = await getDocs(q)
-      const updates = snap.docs.map(d => updateDoc(doc(db, 'hands_raised', d.id), { active: false, resolved: true }))
+      const updates = snap.docs.map(d => updateDoc(doc(db, 'classes', classId, 'hands_raised', d.id), { active: false, resolved: true }))
       await Promise.all(updates)
     } catch (err) {
       console.error('重置錯誤：', err)
@@ -64,15 +63,42 @@ export default function HandsMonitor({ classId, isOwner }) {
   const handleAwardWithPoints = async (hand, points) => {
     if (!isOwner) { alert('僅老師可給分'); return }
     try {
-      // Create a participation log that references the original hand document
-      await addDoc(collection(db, 'participation_logs'), {
+      // 第一步：整理分数
+      const classRef = doc(db, 'classes', classId)
+      const classSnap = await getDoc(classRef)
+      const currentScores = classSnap.exists() ? (classSnap.data().scores || {}) : {}
+      const updatedScores = { ...currentScores }
+      updatedScores[hand.group] = (updatedScores[hand.group] || 0) + points
+      
+      // 第二步：使用 batch 原子操作更新
+      const batch = writeBatch(db)
+      
+      // 1. 寫入審計日誌
+      const logRef = doc(
+        collection(db, 'classes', classId, 'participation_logs'),
+        `${Date.now()}-${Math.random().toString(36).substring(7)}`
+      )
+      batch.set(logRef, {
         classId: hand.classId || classId,
         group: hand.group,
         timestamp: serverTimestamp(),
         points,
-        handRef: doc(db, 'hands_raised', hand.id)
+        handRef: hand.id
       })
-      await updateDoc(doc(db, 'hands_raised', hand.id), { active: false, resolved: true })
+      
+      // 2. 標記舉手為已處理
+      batch.update(doc(db, 'classes', classId, 'hands_raised', hand.id), { 
+        active: false, 
+        resolved: true 
+      })
+      
+      // 3. 更新積分快取 (classes.scores)
+      batch.update(classRef, {
+        scores: updatedScores,
+        scoresLastUpdate: serverTimestamp()
+      })
+      
+      await batch.commit()
     } catch (err) {
       console.error('加分錯誤：', err)
     }
@@ -85,13 +111,35 @@ export default function HandsMonitor({ classId, isOwner }) {
         alert('請輸入組別編號')
         return
       }
-      // Create a participation log for the specified group (no handRef)
-      await addDoc(collection(db, 'participation_logs'), {
+      // 第一步：整理分数
+      const classRef = doc(db, 'classes', classId)
+      const classSnap = await getDoc(classRef)
+      const currentScores = classSnap.exists() ? (classSnap.data().scores || {}) : {}
+      const updatedScores = { ...currentScores }
+      updatedScores[group] = (updatedScores[group] || 0) + points
+      
+      // 第二步：使用 batch 原子操作
+      const batch = writeBatch(db)
+      
+      // 1. 寫入審計日誌
+      const logRef = doc(
+        collection(db, 'classes', classId, 'participation_logs'),
+        `${Date.now()}-${Math.random().toString(36).substring(7)}`
+      )
+      batch.set(logRef, {
         classId: classId,
         group,
         timestamp: serverTimestamp(),
         points
       })
+      
+      // 2. 更新積分快取 (classes.scores)
+      batch.update(classRef, {
+        scores: updatedScores,
+        scoresLastUpdate: serverTimestamp()
+      })
+      
+      await batch.commit()
     } catch (err) {
       console.error('指定組別加分錯誤：', err)
     }
@@ -176,7 +224,7 @@ export default function HandsMonitor({ classId, isOwner }) {
       ) : (
         <ol>
           {hands.map((h, idx) => (
-            <li key={h.id} data-owner={h.ownerId} style={{ marginBottom: 8 }}>
+            <li key={h.id} data-group={h.id} style={{ marginBottom: 8 }}>
               <strong>組別：</strong> {h.group} — <strong>時間：</strong> {h.timestamp?.toDate ? h.timestamp.toDate().toLocaleString() : String(h.timestamp)}
                 <div style={{ display: 'inline-block', marginLeft: 12 }}>
                   {/* 首發專用：允許 0-3 分（只有老師顯示操作） */}

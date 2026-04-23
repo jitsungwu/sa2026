@@ -1,29 +1,19 @@
 "use client"
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useStudentAuth } from '../../../../contexts/StudentAuthContext'
 import SeatGridDisplay from '../../../../components/SeatGridDisplay'
 
 export default function SeatSelectionPage() {
   const params = useParams()
   const router = useRouter()
   const classId = params?.classId
-  const [student, setStudent] = useState(null)
+  const { studentInfo, updateStudentInfo, logout } = useStudentAuth()
   const [loadingSeat, setLoadingSeat] = useState(false)
   const [message, setMessage] = useState(null)
 
-  useEffect(() => {
-    const authStr = typeof window !== 'undefined' ? localStorage.getItem('studentAuth') : null
-    if (authStr) {
-      try {
-        setStudent(JSON.parse(authStr))
-      } catch (e) {
-        console.error('Failed to parse student auth:', e)
-      }
-    }
-  }, [])
-
   const handleReserve = async (r, c) => {
-    if (loadingSeat) return
+    if (loadingSeat || !studentInfo) return
     setMessage(null)
 
     setLoadingSeat(true)
@@ -31,7 +21,7 @@ export default function SeatSelectionPage() {
       const res = await fetch(`/api/class/${classId}/reserve-seat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classId, groupId: student.groupId, row: r, col: c })
+        body: JSON.stringify({ classId, groupId: studentInfo.groupId, row: r, col: c })
       })
 
       const json = await res.json()
@@ -49,9 +39,8 @@ export default function SeatSelectionPage() {
       // Success: seat reserved. UI will update via onSnapshot; navigate to dashboard
       setMessage({ type: 'success', text: '座位已選定，正在導向儀表板…' })
       
-      // Update localStorage to reflect seat selection
-      const updatedStudent = { ...student, seatSelected: true }
-      localStorage.setItem('studentAuth', JSON.stringify(updatedStudent))
+      // Update Context to reflect seat selection (instead of localStorage)
+      updateStudentInfo({ seatSelected: true })
       
       setTimeout(() => router.push(`/class/${classId}/dashboard`), 800)
     } catch (e) {
@@ -62,7 +51,7 @@ export default function SeatSelectionPage() {
     }
   }
 
-  if (!student) {
+  if (!studentInfo) {
     return (
       <div style={{ padding: 24 }}>
         <p>未登入或登入已過期，請重新登入。</p>
@@ -77,17 +66,17 @@ export default function SeatSelectionPage() {
     <div style={{ padding: 24 }}>
       <h1>座位選擇</h1>
       <div style={{ marginBottom: 20, padding: 12, backgroundColor: '#f0f0f0', borderRadius: 6 }}>
-        <p><strong>學號：</strong> {student.account}</p>
-        <p><strong>姓名：</strong> {student.name || '未提供'}</p>
-        <p><strong>組別：</strong> {student.groupId}</p>
-        <p><strong>班級：</strong> {student.classId}</p>
+        <p><strong>學號：</strong> {studentInfo.account}</p>
+        <p><strong>姓名：</strong> {studentInfo.name || '未提供'}</p>
+        <p><strong>組別：</strong> {studentInfo.groupId}</p>
+        <p><strong>班級：</strong> {studentInfo.classId}</p>
       </div>
 
       {/* 使用可重用的座位表組件 - 互動模式 */}
       <SeatGridDisplay
         classId={classId}
         interactive={true}
-        currentGroupId={student.groupId}
+        currentGroupId={studentInfo.groupId}
         onReserve={handleReserve}
         loading={loadingSeat}
         message={message}
@@ -118,7 +107,11 @@ export default function SeatSelectionPage() {
             textDecoration: 'none',
             borderRadius: 4
           }}
-          onClick={() => localStorage.removeItem('studentAuth')}
+          onClick={async (e) => {
+            e.preventDefault()
+            await logout()
+            router.push('/signin')
+          }}
         >
           登出
         </a>

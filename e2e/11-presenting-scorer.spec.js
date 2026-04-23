@@ -128,9 +128,16 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
 
   // Click to claim scorer role
   await claimBtn.click()
+  console.log('✅ Claim button clicked')
 
-  // After claiming, the claim button should disappear
+  // Wait for Firestore to propagate the scorer assignment
+  // This is critical - other students won't be able to raise hands until presentingScorerOwnerId is set
+  console.log('📝 Waiting for scorer assignment to propagate to Firestore...')
+  await scorerPage.waitForTimeout(3000)
+  
+  // Verify the UI updated on scorer's page
   await expect(claimBtn).toHaveCount(0)
+  console.log('✅ Scorer claim confirmed on scorer page')
 
   // Verify that scorer cannot raise hand (displaying info text instead of button)
   // Scorers in presenting group cannot raise hands after claiming scorer role
@@ -164,7 +171,9 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   })
 
   // Wait for page to fully load and Firestore listeners to initialize
-  await otherStudentPage.waitForTimeout(3000)
+  // Give extra time for onSnapshot listeners to receive the presentingScorerOwnerId update
+  console.log('📝 Waiting for other student page to receive Firestore updates...')
+  await otherStudentPage.waitForTimeout(5000)
 
   // For the other student (not in presenting group), the raise hand button should be available
   const otherRaiseBtn = otherStudentPage.locator('button:has-text("舉手")')

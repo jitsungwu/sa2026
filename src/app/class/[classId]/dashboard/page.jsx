@@ -1,6 +1,7 @@
 "use client"
 import React, { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import { useStudentAuth } from '../../../../contexts/StudentAuthContext'
 import { db } from '../../../../firebaseClient'
 import { doc, getDoc, onSnapshot } from '../../../../lib/firestoreWrapper'
 import RaiseHandButton from '../../../../components/RaiseHandButton'
@@ -9,27 +10,17 @@ import PresentingGroupScorer from '../../../../components/PresentingGroupScorer'
 
 export default function StudentDashboardPage() {
   const params = useParams()
+  const router = useRouter()
   const classId = params?.classId
-  const [student, setStudent] = useState(null)
+  const { studentInfo, updateStudentInfo, logout } = useStudentAuth()
   const [seatInfo, setSeatInfo] = useState(null)
   const [loading, setLoading] = useState(false)
   const [presentingGroupId, setPresentingGroupId] = useState(null)
   const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
 
-  useEffect(() => {
-    const authStr = typeof window !== 'undefined' ? localStorage.getItem('studentAuth') : null
-    if (authStr) {
-      try {
-        setStudent(JSON.parse(authStr))
-      } catch (e) {
-        console.error('Failed to parse student auth:', e)
-      }
-    }
-  }, [])
-
   // Query seat location from Firestore
   useEffect(() => {
-    if (!student || !classId || !db) return
+    if (!studentInfo || !classId || !db) return
 
     const fetchSeatInfo = async () => {
       setLoading(true)
@@ -48,7 +39,7 @@ export default function StudentDashboardPage() {
             for (const [colStr, groupId] of Object.entries(rowData)) {
               const col = parseInt(colStr, 10)
               const normalizedGroupId = String(groupId).padStart(2, '0')
-              const studentGroupId = String(student.groupId).padStart(2, '0')
+              const studentGroupId = String(studentInfo.groupId).padStart(2, '0')
               
               if (normalizedGroupId === studentGroupId) {
                 // Determine zone based on column
@@ -58,10 +49,8 @@ export default function StudentDashboardPage() {
                 else if (col === 3) zone = '右區'
 
                 setSeatInfo({ row, col, zone })
-                // 更新 localStorage 的 seatSelected，確保一致性
-                const updatedStudent = { ...student, seatSelected: true }
-                localStorage.setItem('studentAuth', JSON.stringify(updatedStudent))
-                setStudent(updatedStudent)
+                // 更新 Context 的 seatSelected，確保一致性
+                updateStudentInfo({ seatSelected: true })
                 return
               }
             }
@@ -80,7 +69,7 @@ export default function StudentDashboardPage() {
     }
 
     fetchSeatInfo()
-  }, [student, classId])
+  }, [studentInfo, classId, updateStudentInfo])
 
   // Listen for presenting group info
   useEffect(() => {
@@ -107,16 +96,16 @@ export default function StudentDashboardPage() {
 
   // Check if user is in presenting group
   const isUserInPresentingGroup = () => {
-    if (!presentingGroupId || !student) return false
+    if (!presentingGroupId || !studentInfo) return false
     const presentingNum = parseInt(String(presentingGroupId), 10)
-    const studentNum = parseInt(String(student.groupId), 10)
+    const studentNum = parseInt(String(studentInfo.groupId), 10)
     return presentingNum === studentNum && !isNaN(presentingNum) && !isNaN(studentNum)
   }
 
   return (
     <div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
       
-      {!student ? (
+      {!studentInfo ? (
         <>
           <h1 style={{ fontSize: '2em' }}>未登入</h1>
           <p style={{ fontSize: '1em' }}>未登入或登入已過期，請重新登入。</p>
@@ -131,8 +120,8 @@ export default function StudentDashboardPage() {
       {/* 個人資訊 */}
       <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f0f0f0', borderRadius: 6, border: '1px solid #ddd' }}>
         <div style={{ display: 'flex', gap: 16, fontSize: '1em', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span><strong>{student.account}</strong></span>
-          <span>{student.name || '未提供'} | {student.groupId}組</span>
+          <span><strong>{studentInfo.account}</strong></span>
+          <span>{studentInfo.name || '未提供'} | {studentInfo.groupId}組</span>
           <span>座位：{seatInfo ? `${seatInfo.zone}第 ${seatInfo.row} 排` : '未選'}</span>
           {!seatInfo && (
             <span style={{ color: '#cf1322' }}>
@@ -145,14 +134,14 @@ export default function StudentDashboardPage() {
       {/* 互動功能 */}
       <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 6, border: '1px solid #eee' }}>
         <h2 style={{ marginTop: 0 }}>互動功能</h2>
-        <RaiseHandButton classId={classId} group={student.groupId} />
+        <RaiseHandButton classId={classId} group={studentInfo.groupId} />
         
         {isUserInPresentingGroup() && (
           <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #ddd' }}>
-            <p style={{ color: '#666', marginBottom: 16, fontSize: '1em' }}>📊 你所在的 {student.groupId} 組正在報告中</p>
+            <p style={{ color: '#666', marginBottom: 16, fontSize: '1em' }}>📊 你所在的 {studentInfo.groupId} 組正在報告中</p>
             <PresentingGroupScorer 
               classId={classId} 
-              group={student.groupId} 
+              group={studentInfo.groupId} 
               presentingScorerOwnerId={presentingScorerOwnerId} 
             />
           </div>
@@ -168,9 +157,9 @@ export default function StudentDashboardPage() {
       {/* 登出按鈕 */}
       <div>
         <button
-          onClick={() => {
-            localStorage.removeItem('studentAuth')
-            window.location.href = '/signin'
+          onClick={async () => {
+            await logout()
+            router.push('/signin')
           }}
           style={{
             padding: '8px 16px',
