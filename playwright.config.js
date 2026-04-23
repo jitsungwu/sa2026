@@ -14,7 +14,7 @@ export default defineConfig({
   },
   reporter: [
     ['list'],
-    ['html', { outputFolder: './test-results' }],
+    ['html', { outputFolder: './test-results', open: 'never' }],
     ['json', { outputFile: './test-results/e2e-results.json' }]
   ],
   webServer: {

@@ -88,6 +88,10 @@ applyTo:
    - **指令**: 執行 `npx playwright test`。
    - **限制**: 嚴禁使用 `--headed` 參數。確保以 Headless 模式運行以節省資源。
    - **安靜模式**: 運行期間不發起對話，僅回報最終結果。
+   - **測試結果**: 
+     - HTML report 不會自動打開（已禁用自動啟動）
+     - 測試結果直接保存到 `./test-results` 文件夾
+     - 若需查看 HTML report，可手動開啟 `./test-results/index.html`
 
 ### Phase 4: Summary & Cleanup
 1. **回報**: 彙整 Vitest 與 Playwright 的成功/失敗報告。
