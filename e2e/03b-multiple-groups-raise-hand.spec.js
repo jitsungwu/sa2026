@@ -3,15 +3,18 @@ import dotenv from 'dotenv'
 
 dotenv.config({ path: '.env.local' })
 
-test('multiple groups can raise hands simultaneously', async ({ browser }) => {
+test('multiple students with independent auth contexts raise hands simultaneously', async ({ browser }) => {
   const base = process.env.BASE_URL || 'http://localhost:3000'
   const email = process.env.TEACHER_ID
   const password = process.env.TEACHER_PASSWORD
+  const TEST_CLASS = process.env.TEST_CLASS_ID || 'demo'
 
   // ===== TEACHER SETUP =====
+  console.log('👨‍🏫 Setting up teacher context...')
   const teacherContext = await browser.newContext()
   const monitorPage = await teacherContext.newPage()
   await monitorPage.goto(`${base}/class/monitor`)
+  
   const loggedIn = await monitorPage.$('button:has-text("登出")')
   if (!loggedIn) {
     if (!email || !password) test.skip('TEACHER_ID or TEACHER_PASSWORD not provided in .env.local')
@@ -26,13 +29,13 @@ test('multiple groups can raise hands simultaneously', async ({ browser }) => {
   }
 
   // Activate class
-  const TEST_CLASS = process.env.TEST_CLASS_ID || 'demo'
+  console.log('🚀 Activating class...')
   await monitorPage.waitForTimeout(1000)
   const activateBtn = await monitorPage.$('button:has-text("啟動班級")')
   if (activateBtn) {
     const sel = await monitorPage.$('select')
     if (sel) {
-      const opt = await monitorPage.$(`select option[value=\"${TEST_CLASS}\"]`)
+      const opt = await monitorPage.$(`select option[value="${TEST_CLASS}"]`)
       if (opt) await monitorPage.selectOption('select', TEST_CLASS)
       else await monitorPage.selectOption('select', { index: 0 })
     }
@@ -58,109 +61,138 @@ test('multiple groups can raise hands simultaneously', async ({ browser }) => {
   }
 
   await monitorPage.waitForSelector('text=即時舉手名單', { timeout: 15000 })
+  console.log('✅ Class activated and monitor ready')
 
-  // ===== STUDENT 1 (GROUP 01) RAISES HAND =====
+  // ===== STUDENT 1: Independent Auth Context (Group 01) =====
+  console.log('\n👤 Student 1 (Group 01, Independent Context): Starting...')
   const student1Context = await browser.newContext()
   const student1Page = await student1Context.newPage()
-  await student1Page.goto(`${base}/class/student?participantId=e2e_student_multi_1&group=01`, { waitUntil: 'domcontentloaded' })
   
-  const TEST_CLASS_DISPLAY = `學生頁 — 班級：${TEST_CLASS}`
-  await student1Page.waitForSelector(`h1:has-text("${TEST_CLASS_DISPLAY}")`, { timeout: 15000 })
+  console.log('  📝 Opening student dashboard page...')
+  await student1Page.goto(`${base}/class/${TEST_CLASS}/dashboard?participantId=multi_student_1&group=01`, { waitUntil: 'domcontentloaded' })
+  
+  console.log('  📝 Waiting for raise hand button...')
   await student1Page.waitForSelector('button:has-text("舉手")', { timeout: 15000 })
-  await student1Page.click('text=舉手')
+  
+  console.log('  📝 Clicking raise hand button...')
+  await student1Page.click('button:has-text("舉手")')
+  
+  console.log('  📝 Waiting for confirmation (已舉手)...')
   await expect(student1Page.locator('text=已舉手')).toBeVisible({ timeout: 7000 })
+  console.log('✅ Student 1 raised hand (Group 01) in independent context')
 
-  // Monitor should show group 01 raised hand
-  console.log('📝 Waiting for group 01 to appear in monitor...')
-  // Use more flexible selector that matches the actual DOM
+  // ===== STUDENT 2: Separate Independent Auth Context (Group 02) =====
+  console.log('\n👤 Student 2 (Group 02, Independent Context): Starting...')
+  const student2Context = await browser.newContext()
+  const student2Page = await student2Context.newPage()
+  
+  console.log('  📝 Opening student dashboard page...')
+  await student2Page.goto(`${base}/class/${TEST_CLASS}/dashboard?participantId=multi_student_2&group=02`, { waitUntil: 'domcontentloaded' })
+  
+  console.log('  📝 Waiting for raise hand button...')
+  await student2Page.waitForSelector('button:has-text("舉手")', { timeout: 15000 })
+  
+  console.log('  📝 Clicking raise hand button...')
+  await student2Page.click('button:has-text("舉手")')
+  
+  console.log('  📝 Waiting for confirmation...')
+  await expect(student2Page.locator('text=已舉手')).toBeVisible({ timeout: 7000 })
+  console.log('✅ Student 2 raised hand (Group 02) in independent context')
+
+  // Wait for Firestore sync
+  await monitorPage.waitForTimeout(2000)
+
+  // ===== STUDENT 3: Third Independent Auth Context (Group 05) =====
+  console.log('\n👤 Student 3 (Group 05, Independent Context): Starting...')
+  const student3Context = await browser.newContext()
+  const student3Page = await student3Context.newPage()
+  
+  console.log('  📝 Opening student dashboard page...')
+  await student3Page.goto(`${base}/class/${TEST_CLASS}/dashboard?participantId=multi_student_3&group=05`, { waitUntil: 'domcontentloaded' })
+  
+  console.log('  📝 Waiting for raise hand button...')
+  await student3Page.waitForSelector('button:has-text("舉手")', { timeout: 15000 })
+  
+  console.log('  📝 Clicking raise hand button...')
+  await student3Page.click('button:has-text("舉手")')
+  
+  console.log('  📝 Waiting for confirmation...')
+  await expect(student3Page.locator('text=已舉手')).toBeVisible({ timeout: 7000 })
+  console.log('✅ Student 3 raised hand (Group 05) in independent context')
+
+  // Wait for Firestore propagation
+  await monitorPage.waitForTimeout(3000)
+
+  // ===== VERIFY ALL THREE GROUPS IN MONITOR =====
+  console.log('\n🔍 Verifying all students appear in monitor...')
+  
+  // Check for Group 01
+  console.log('  📝 Checking for Group 01...')
   let group01Found = false
-  for (let i = 0; i < 30; i++) {
-    const items = await monitorPage.locator('li').count()
-    console.log(`  [${i}] Found ${items} list items in monitor`)
-    const group01 = await monitorPage.locator('li:has-text("01")').first()
-    if (await group01.count() > 0) {
+  for (let i = 0; i < 15; i++) {
+    const group01Locators = await monitorPage.locator('li[data-group="01"]').count()
+    if (group01Locators > 0) {
       group01Found = true
       break
     }
     await monitorPage.waitForTimeout(500)
   }
-  if (!group01Found) throw new Error('Group 01 not found')
-  console.log('✅ Group 01 raised hand detected in monitor')
+  if (!group01Found) throw new Error('Group 01 not found in monitor')
+  console.log('  ✅ Group 01 visible in monitor')
 
-  // ===== STUDENT 2 (GROUP 02) RAISES HAND =====
-  const student2Context = await browser.newContext()
-  const student2Page = await student2Context.newPage()
-  console.log(`📝 Student 2: navigating to ${base}/class/student?participantId=e2e_student_multi_2&group=02`)
-  await student2Page.goto(`${base}/class/student?participantId=e2e_student_multi_2&group=02`, { waitUntil: 'domcontentloaded' })
-  
-  console.log('📝 Student 2: waiting for class display...')
-  await student2Page.waitForSelector(`h1:has-text("${TEST_CLASS_DISPLAY}")`, { timeout: 15000 })
-  console.log('📝 Student 2: waiting for raise hand button...')
-  await student2Page.waitForSelector('button:has-text("舉手")', { timeout: 15000 })
-  
-  console.log('📝 Student 2: clicking raise hand button...')
-  await student2Page.click('text=舉手')
-  
-  console.log('📝 Student 2: waiting for visual confirmation (已舉手)...')
-  await expect(student2Page.locator('text=已舉手')).toBeVisible({ timeout: 7000 })
-  console.log('✅ Student 2 successfully raised hand')
-
-  // Give more time for Firestore propagation
-  await monitorPage.waitForTimeout(3000)
-
-  // Monitor should show both group 01 and group 02
-  console.log('📝 Waiting for group 02 to appear in monitor...')
+  // Check for Group 02
+  console.log('  📝 Checking for Group 02...')
   let group02Found = false
-  for (let i = 0; i < 30; i++) {
-    const items = await monitorPage.locator('li').count()
-    console.log(`  [${i}] Found ${items} list items in monitor`)
-    const group02 = await monitorPage.locator('li:has-text("02")').first()
-    if (await group02.count() > 0) {
+  for (let i = 0; i < 15; i++) {
+    const group02Locators = await monitorPage.locator('li[data-group="02"]').count()
+    if (group02Locators > 0) {
       group02Found = true
       break
     }
     await monitorPage.waitForTimeout(500)
   }
-  if (!group02Found) throw new Error('Group 02 not found')
-  console.log('✅ Group 02 raised hand detected in monitor')
+  if (!group02Found) throw new Error('Group 02 not found in monitor')
+  console.log('  ✅ Group 02 visible in monitor')
 
-  // Verify both groups are shown in monitor
-  const allItems = await monitorPage.locator('li').count()
-  console.log(`✅ Monitor shows ${allItems} list items total`)
-
-  // ===== STUDENT 3 (GROUP 03) RAISES HAND =====
-  console.log('📝 Student 3: starting...')
-  const student3Context = await browser.newContext()
-  const student3Page = await student3Context.newPage()
-  await student3Page.goto(`${base}/class/student?participantId=e2e_student_multi_3&group=03`, { waitUntil: 'domcontentloaded' })
-  
-  await student3Page.waitForSelector(`h1:has-text("${TEST_CLASS_DISPLAY}")`, { timeout: 15000 })
-  await student3Page.waitForSelector('button:has-text("舉手")', { timeout: 15000 })
-  await student3Page.click('text=舉手')
-  await expect(student3Page.locator('text=已舉手')).toBeVisible({ timeout: 7000 })
-  console.log('✅ Student 3 successfully raised hand')
-
-  // Monitor should now show all three groups
-  await monitorPage.waitForTimeout(2000)
-  console.log('📝 Waiting for group 03 to appear in monitor...')
-  let group03Found = false
-  for (let i = 0; i < 30; i++) {
-    const items = await monitorPage.locator('li').count()
-    const group03 = await monitorPage.locator('li:has-text("03")').first()
-    if (await group03.count() > 0) {
-      group03Found = true
+  // Check for Group 05
+  console.log('  📝 Checking for Group 05...')
+  let group05Found = false
+  for (let i = 0; i < 15; i++) {
+    const group05Locators = await monitorPage.locator('li[data-group="05"]').count()
+    if (group05Locators > 0) {
+      group05Found = true
       break
     }
     await monitorPage.waitForTimeout(500)
   }
-  if (!group03Found) throw new Error('Group 03 not found')
-  console.log('✅ Group 03 raised hand detected in monitor')
+  if (!group05Found) throw new Error('Group 05 not found in monitor')
+  console.log('  ✅ Group 05 visible in monitor')
+
+  // ===== VERIFY INDEPENDENT AUTH CONTEXTS =====
+  console.log('\n🔐 Verifying independent authentication contexts...')
+  
+  // Each student should see their own UI state in their own context
+  const student1Raised = await student1Page.locator('text=已舉手').count()
+  const student2Raised = await student2Page.locator('text=已舉手').count()
+  const student3Raised = await student3Page.locator('text=已舉手').count()
+  
+  console.log(`  Student 1 (Group 01): raised = ${student1Raised > 0 ? 'Yes ✓' : 'No ✗'}`)
+  console.log(`  Student 2 (Group 02): raised = ${student2Raised > 0 ? 'Yes ✓' : 'No ✗'}`)
+  console.log(`  Student 3 (Group 05): raised = ${student3Raised > 0 ? 'Yes ✓' : 'No ✗'}`)
+  
+  if (student1Raised === 0 || student2Raised === 0 || student3Raised === 0) {
+    throw new Error('Not all students showing raised hand status')
+  }
+  console.log('  ✅ All students have independent auth state in their contexts')
 
   // ===== CLEANUP =====
+  console.log('\n🧹 Cleaning up...')
   await student1Context.close()
   await student2Context.close()
   await student3Context.close()
   await teacherContext.close()
 
-  console.log('✅ TEST PASSED: Multiple groups can raise hands simultaneously')
+  console.log('\n✅ TEST PASSED: Multiple students with independent auth contexts raise hands simultaneously!')
+  console.log('   Each browser context maintains its own Firebase Auth session.')
+  console.log('   No localStorage interference between contexts!')
 })

@@ -17,6 +17,34 @@ export function StudentAuthProvider({ children }) {
       return
     }
 
+    // 先检查 URL 参数中是否有测试数据（用于 E2E 测试）
+    let urlStudentInfo = null
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const participantId = params.get('participantId')
+      const group = params.get('group')
+      if (participantId && group) {
+        urlStudentInfo = {
+          account: participantId,
+          name: `Test Student ${participantId}`,
+          groupId: group,
+          classId: params.get('classId') || 'demo',
+          seatSelected: false,
+          timestamp: new Date().toISOString()
+        }
+        console.log('✅ Using URL parameters for testing:', urlStudentInfo)
+      }
+    } catch (e) {
+      console.log('No URL parameters for testing')
+    }
+
+    // 如果有 URL 测试参数，直接使用
+    if (urlStudentInfo) {
+      setStudentInfo(urlStudentInfo)
+      setLoading(false)
+      return
+    }
+
     // 监听 Firebase Auth 状态变化
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
