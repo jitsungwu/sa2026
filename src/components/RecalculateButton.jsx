@@ -28,7 +28,8 @@ export default function RecalculateButton({ classId }) {
 
       setMessage(
         `✅ 重新計算完成！\n` +
-        `共 ${result.totalRecords} 筆記錄，總分 ${result.totalPoints} 分`
+        `共 ${result.totalRecords} 筆記錄，總分 ${result.totalPoints} 分\n` +
+        `更新了 ${Object.keys(result.scores).length} 個組別`
       )
 
       // 3 秒後清除訊息
@@ -45,6 +46,12 @@ export default function RecalculateButton({ classId }) {
 
   return (
     <div style={styles.container}>
+      <div style={styles.header}>🔄 重新計算小組總分</div>
+      <div style={styles.description}>
+        ℹ️ 根據審計日誌重新聚合計算各組積分。<br/>
+        <strong>說明</strong>：此操作只會更新有記錄的組別，不會清空任何現有數據。
+      </div>
+      
       <button
         onClick={handleRecalculate}
         disabled={loading || !classId}
@@ -54,7 +61,7 @@ export default function RecalculateButton({ classId }) {
           cursor: loading || !classId ? 'not-allowed' : 'pointer'
         }}
       >
-        {loading ? '⏳ 重新計算中...' : '🔄 重新計算小組總分'}
+        {loading ? '⏳ 重新計算中...' : '✨ 開始重新計算'}
       </button>
 
       {message && (
@@ -81,6 +88,20 @@ const styles = {
     backgroundColor: '#f5f5f5',
     borderRadius: '8px',
     textAlign: 'center'
+  },
+
+  header: {
+    fontSize: '16px',
+    fontWeight: 'bold',
+    marginBottom: '8px',
+    color: '#333'
+  },
+
+  description: {
+    fontSize: '13px',
+    color: '#666',
+    marginBottom: '12px',
+    lineHeight: '1.5'
   },
 
   button: {

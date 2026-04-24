@@ -32,7 +32,7 @@ export async function awardPoints(db, classId, group, points, givenBy) {
 
     // 1. 寫入審計日誌
     const logRef = doc(
-      collection(db, `classes/${classId}/participation_logs`),
+      collection(db, 'classes', classId, 'participation_logs'),
       `${Date.now()}-${Math.random().toString(36).substring(7)}`
     )
     batch.set(logRef, {
@@ -44,7 +44,7 @@ export async function awardPoints(db, classId, group, points, givenBy) {
     })
 
     // 2. 原子更新 classes 文檔的 scores
-    const classRef = doc(db, `classes/${classId}`)
+    const classRef = doc(db, 'classes', classId)
     batch.update(classRef, {
       [`scores.${group}`]: increment(points),
       scoresLastUpdate: serverTimestamp()
@@ -69,7 +69,7 @@ export async function awardPoints(db, classId, group, points, givenBy) {
  */
 export function listenToScores(db, classId, onUpdate) {
   try {
-    const classRef = doc(db, `classes/${classId}`)
+    const classRef = doc(db, 'classes', classId)
 
     // 只監聽 classes 文檔！無需聚合整個 logs 集合
     const unsubscribe = onSnapshot(classRef, (docSnap) => {
@@ -101,7 +101,7 @@ export async function recalculateScores(db, classId) {
     console.log('🔄 開始重新計算...')
 
     // 讀取所有審計日誌
-    const logsRef = collection(db, `classes/${classId}/participation_logs`)
+    const logsRef = collection(db, 'classes', classId, 'participation_logs')
     const snapshot = await getDocs(logsRef)
 
     // 聚合
@@ -116,16 +116,24 @@ export async function recalculateScores(db, classId) {
       totalRecords += 1
     })
 
-    // 原子寫回 classes 文檔
-    const classRef = doc(db, `classes/${classId}`)
-    await updateDoc(classRef, {
-      scores,
+    // ✅ 重要：只更新計算出的 scores，不清空整個對象
+    // 這樣既有但沒有新記錄的組不會被清空
+    const updateData = {
       scoresLastUpdate: serverTimestamp()
+    }
+
+    // 只添加或更新有計算結果的組別
+    Object.entries(scores).forEach(([group, score]) => {
+      updateData[`scores.${group}`] = score
     })
+
+    const classRef = doc(db, 'classes', classId)
+    await updateDoc(classRef, updateData)
 
     console.log(`✅ 重新計算完成！`)
     console.log(`  - 共 ${totalRecords} 筆記錄`)
     console.log(`  - 總分數: ${totalPoints}`)
+    console.log(`  - 更新了 ${Object.keys(scores).length} 個組別的分數`)
     console.log(`  - 結果:`, scores)
 
     return { success: true, scores, totalRecords, totalPoints }
@@ -150,7 +158,7 @@ export async function initializeScores(db, classId, groupCount = 10) {
       scores[`group-${i}`] = 0
     }
 
-    const classRef = doc(db, `classes/${classId}`)
+    const classRef = doc(db, 'classes', classId)
     await updateDoc(classRef, {
       scores,
       scoresLastUpdate: serverTimestamp()

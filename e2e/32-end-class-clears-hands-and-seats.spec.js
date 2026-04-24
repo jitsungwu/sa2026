@@ -97,6 +97,30 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
       console.log('Already logged in - logout button exists')
     }
     
+    // ===== CLEANUP: Clear any previous test state =====
+    console.log('=== Cleaning up previous test state ===')
+    try {
+      // First, try to end any presenting group
+      const endPresentingBtn = teacherPage.locator('button:has-text("結束報告")')
+      if (await endPresentingBtn.count() > 0) {
+        console.log('Clearing presenting group state...')
+        await endPresentingBtn.click()
+        await teacherPage.waitForTimeout(1000)
+        console.log('✅ Presenting group cleared')
+      }
+      
+      // Then, try to reset all hands
+      const resetBtn = teacherPage.locator('button:has-text("全部重置")')
+      if (await resetBtn.count() > 0) {
+        console.log('Resetting hands and seats...')
+        await resetBtn.click()
+        await teacherPage.waitForTimeout(1000)
+        console.log('✅ All hands and seats reset')
+      }
+    } catch (e) {
+      console.warn('⚠️ Cleanup error:', e.message)
+    }
+    
     // Activate class if needed
     console.log('=== Class Activation ===')
     const selectLocator = teacherPage.locator('select')
@@ -134,31 +158,18 @@ test.describe('Issue #32 - end class clears hands and seats (UI only)', () => {
     await teacherPage.reload({ waitUntil: 'domcontentloaded' })
     await teacherPage.waitForTimeout(2000)
 
-    // Helper: perform student flow (set localStorage studentAuth -> reserve seat -> raise hand)
+    // Helper: perform student flow (use URL parameters for reliable auth)
     const performStudentFlow = async (student) => {
       const ctx = await browser.newContext()
-      const auth = {
-        account: student.account,
-        name: student.account,
-        groupId: String(student.groupId).padStart(2, '0'),
-        classId: demoClassId,
-        seatSelected: false,
-        timestamp: new Date().toISOString()
-      }
-      // Set localStorage before navigating to page
-      await ctx.addInitScript((authStr) => { 
-        try { 
-          localStorage.setItem('studentAuth', authStr) 
-        } catch (e) { 
-          console.error('Failed to set localStorage:', e)
-        } 
-      }, JSON.stringify(auth))
-      
       const page = await ctx.newPage()
       
-      // Navigate to seat-selection page
+      // Build seat-selection URL with URL parameters for StudentAuthContext
+      const groupStr = String(student.groupId).padStart(2, '0')
+      const seatSelectionUrl = `http://localhost:3000/class/${demoClassId}/seat-selection?participantId=${student.account}&group=${groupStr}`
+      
+      // Navigate to seat-selection page with auth parameters
       console.log(`Student ${student.account} navigating to seat-selection...`)
-      await page.goto(`http://localhost:3000/class/${demoClassId}/seat-selection`, { waitUntil: 'domcontentloaded' })
+      await page.goto(seatSelectionUrl, { waitUntil: 'domcontentloaded' })
       console.log(`Navigated to seat-selection page`)
       
       // Wait for React to hydrate and component to render

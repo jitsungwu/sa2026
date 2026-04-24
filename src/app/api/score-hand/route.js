@@ -69,7 +69,7 @@ export async function POST(request) {
 
     // 2. 寫入審計日誌到子集合
     const logRef = doc(
-      collection(db, `classes/${classId}/participation_logs`),
+      collection(db, 'classes', classId, 'participation_logs'),
       `${Date.now()}-${Math.random().toString(36).substring(7)}`
     )
     batch.set(logRef, {

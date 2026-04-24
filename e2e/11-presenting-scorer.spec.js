@@ -67,6 +67,19 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   
   console.log('Proceeding with test (class activation status uncertain due to encoding issues)')
 
+  // ===== CLEANUP: Ensure clean state by clearing hands_raised before test =====
+  console.log('🧹 Pre-test cleanup: clearing any existing hands...')
+  try {
+    const resetBtn = page.locator('button:has-text("全部重置")')
+    if (await resetBtn.count() > 0) {
+      await resetBtn.click()
+      await page.waitForTimeout(2000)
+      console.log('✅ Pre-test cleanup complete')
+    }
+  } catch (e) {
+    console.warn('⚠️ Pre-test cleanup failed:', e.message)
+  }
+
   // Set presenting group via monitor UI
   await page.waitForSelector('#presenting-group-input', { timeout: 10000 })
   
@@ -108,10 +121,7 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   console.log('Scorer URL:', scorerUrl)
   await scorerPage.goto(scorerUrl, { waitUntil: 'domcontentloaded' })
   
-  // Set studentAuth in localStorage for the scorer
-  await scorerPage.evaluate((studentId) => {
-    localStorage.setItem('studentAuth', JSON.stringify({ account: studentId }))
-  }, scorerStudentId)
+  // ✅ No need to set localStorage - URL parameters take priority in StudentAuthContext
 
   // Wait for the "我負責評分" button to appear (with longer timeout for Firestore data load)
   const claimBtn = scorerPage.locator('button:has-text("我負責評分")')
@@ -155,10 +165,7 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   console.log('Other student URL:', otherUrl)
   await otherStudentPage.goto(otherUrl, { waitUntil: 'domcontentloaded' })
   
-  // Set studentAuth in localStorage for the other student
-  await otherStudentPage.evaluate((studentId) => {
-    localStorage.setItem('studentAuth', JSON.stringify({ account: studentId }))
-  }, otherStudentId)
+  // ✅ No need to set localStorage - URL parameters take priority in StudentAuthContext
   
   // Capture console messages
   const consoleLogs = []
@@ -173,7 +180,7 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   // Wait for page to fully load and Firestore listeners to initialize
   // Give extra time for onSnapshot listeners to receive the presentingScorerOwnerId update
   console.log('📝 Waiting for other student page to receive Firestore updates...')
-  await otherStudentPage.waitForTimeout(5000)
+  await otherStudentPage.waitForTimeout(7000)
 
   // For the other student (not in presenting group), the raise hand button should be available
   const otherRaiseBtn = otherStudentPage.locator('button:has-text("舉手")')
@@ -215,6 +222,19 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   }
   
   await expect(otherCancelBtn).toHaveCount(1)
+
+  // ===== CLEANUP: Clear presenting group state for next test =====
+  console.log('🧹 Cleaning up presenting group state...')
+  try {
+    const endPresentingBtn = page.locator('button:has-text("結束報告")')
+    if (await endPresentingBtn.count() > 0) {
+      await endPresentingBtn.click()
+      await page.waitForTimeout(1000)
+      console.log('✅ Presenting group cleared')
+    }
+  } catch (e) {
+    console.warn('⚠️ Could not clear presenting group:', e.message)
+  }
 
   await scorerPage.close()
   await otherStudentPage.close()

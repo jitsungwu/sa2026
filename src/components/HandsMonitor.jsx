@@ -1,7 +1,7 @@
 "use client"
 import React, { useEffect, useState } from "react"
 import { db } from "../firebaseClient"
-import { collection, query, where, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, getDocs, writeBatch, getDoc } from "../lib/firestoreWrapper"
+import { collection, query, where, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, getDocs, writeBatch, getDoc, deleteDoc } from "../lib/firestoreWrapper"
 
 export default function HandsMonitor({ classId, isOwner }) {
   const [hands, setHands] = useState([])
@@ -51,10 +51,12 @@ export default function HandsMonitor({ classId, isOwner }) {
     if (!isOwner) { alert('僅老師可重置舉手紀錄'); return }
     try {
       const colRef = collection(db, 'classes', classId, 'hands_raised')
-      const q = query(colRef, where('active', '==', true))
-      const snap = await getDocs(q)
-      const updates = snap.docs.map(d => updateDoc(doc(db, 'classes', classId, 'hands_raised', d.id), { active: false, resolved: true }))
-      await Promise.all(updates)
+      const snap = await getDocs(colRef)
+      // ✅ 真正刪除所有 hands_raised 文檔（不只是標記為 inactive）
+      // 這樣重新啟動時不會有舊的狀態污染新的舉手
+      const deletes = snap.docs.map(d => deleteDoc(doc(db, 'classes', classId, 'hands_raised', d.id)))
+      await Promise.all(deletes)
+      console.log(`✅ 已刪除 ${deletes.length} 條舉手記錄`)
     } catch (err) {
       console.error('重置錯誤：', err)
     }
