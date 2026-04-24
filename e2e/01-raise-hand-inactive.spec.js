@@ -15,6 +15,9 @@ test('when class inactive student sees inactive message', async ({ page }) => {
     // Not logged in, attempt to sign in as teacher
     try {
       await page.goto(`${base}/signin`, { waitUntil: 'domcontentloaded' })
+      // 點擊「教師登入」按鈕以顯示登入表單
+      await page.click('button:has-text("教師登入")')
+      await page.waitForSelector('input[placeholder="email@example.com"]', { timeout: 5000 })
       await page.fill('input[placeholder="email@example.com"]', email)
       await page.fill('input[type="password"]', password)
       await page.click('button:has-text("登入")')

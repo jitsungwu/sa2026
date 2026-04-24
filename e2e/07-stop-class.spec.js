@@ -16,6 +16,9 @@ test('end class and logout', async ({ browser }) => {
   if (!loggedIn) {
     if (!email || !password) test.skip('TEACHER_ID or TEACHER_PASSWORD not provided in .env.local')
     await page.goto(`${base}/signin`)
+    // 點擊「教師登入」按鈕以顯示登入表單
+    await page.click('button:has-text("教師登入")')
+    await page.waitForSelector('input[placeholder="email@example.com"]', { timeout: 5000 })
     await page.fill('input[placeholder="email@example.com"]', email)
     await page.fill('input[type="password"]', password)
     await page.click('button:has-text("登入")')

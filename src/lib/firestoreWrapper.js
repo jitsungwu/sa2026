@@ -1,3 +1,3 @@
-import { addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, updateDoc, doc, getDocs, setDoc, getDoc } from 'firebase/firestore'
+import { addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, updateDoc, doc, getDocs, setDoc, getDoc, writeBatch, increment, deleteDoc } from 'firebase/firestore'
 
-export { addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, updateDoc, doc, getDocs, setDoc, getDoc }
+export { addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, updateDoc, doc, getDocs, setDoc, getDoc, writeBatch, increment, deleteDoc }

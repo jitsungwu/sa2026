@@ -24,16 +24,29 @@ const db = getFirestore(app)
 
 async function clearActiveHands() {
   try {
-    const col = collection(db, 'hands_raised')
-    const q = query(col, where('active', '==', true))
-    const snap = await getDocs(q)
-    if (!snap || snap.empty) {
-      console.log('No active hands to clear')
+    // 获取所有班级
+    const classesSnap = await getDocs(collection(db, 'classes'))
+    if (!classesSnap || classesSnap.empty) {
+      console.log('No classes found')
       return
     }
-    const deletes = snap.docs.map(d => deleteDoc(doc(db, 'hands_raised', d.id)))
-    await Promise.all(deletes)
-    console.log(`Cleared ${deletes.length} active hand(s)`)
+    
+    let totalCleared = 0
+    for (const classDoc of classesSnap.docs) {
+      const classId = classDoc.id
+      // 从每个班级的 hands_raised 子集合中清除
+      const col = collection(db, 'classes', classId, 'hands_raised')
+      const q = query(col, where('active', '==', true))
+      const snap = await getDocs(q)
+      
+      if (snap && !snap.empty) {
+        const deletes = snap.docs.map(d => deleteDoc(doc(db, 'classes', classId, 'hands_raised', d.id)))
+        await Promise.all(deletes)
+        console.log(`Cleared ${deletes.length} active hand(s) from class ${classId}`)
+        totalCleared += deletes.length
+      }
+    }
+    console.log(`Total cleared: ${totalCleared} active hand(s)`)
   } catch (err) {
     console.error('Failed to clear active hands:', err)
     process.exit(2)

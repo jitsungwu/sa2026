@@ -24,15 +24,25 @@ const db = getFirestore(app)
 
 async function listAllHands() {
   try {
-    const col = collection(db, 'hands_raised')
-    const snap = await getDocs(col)
-    if (!snap || snap.empty) {
-      console.log('No hands_raised documents')
+    // 获取所有班级
+    const classesSnap = await getDocs(collection(db, 'classes'))
+    if (!classesSnap || classesSnap.empty) {
+      console.log('No classes found')
       return
     }
-    console.log('hands_raised docs:')
-    for (const d of snap.docs) {
-      console.log(d.id, JSON.stringify(d.data()))
+    
+    console.log('hands_raised docs by class:')
+    for (const classDoc of classesSnap.docs) {
+      const classId = classDoc.id
+      const col = collection(db, 'classes', classId, 'hands_raised')
+      const snap = await getDocs(col)
+      
+      if (snap && !snap.empty) {
+        console.log(`\n  Class ${classId}:`)
+        for (const d of snap.docs) {
+          console.log(`    ${d.id}: ${JSON.stringify(d.data())}`)
+        }
+      }
     }
   } catch (err) {
     console.error('Failed to list hands:', err)

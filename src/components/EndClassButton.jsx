@@ -30,11 +30,11 @@ export default function EndClassButton({ classId, classOwner, currentUser }) {
     try {
       if (db && classId) {
         try {
-          // 清除舉手紀錄
-          const colRef = collection(db, 'hands_raised')
-          const q = query(colRef, where('classId', '==', classId), where('active', '==', true))
+          // 清除舉手紀錄（從子集合）
+          const colRef = collection(db, 'classes', classId, 'hands_raised')
+          const q = query(colRef, where('active', '==', true))
           const snap = await getDocs(q)
-          const updates = snap.docs.map(d => updateDoc(doc(db, 'hands_raised', d.id), { active: false, resolved: true }))
+          const updates = snap.docs.map(d => updateDoc(doc(db, 'classes', classId, 'hands_raised', d.id), { active: false, resolved: true }))
           await Promise.all(updates)
         } catch (err) {
           console.error('無法清除舉手紀錄', err)

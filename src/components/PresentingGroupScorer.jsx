@@ -1,28 +1,19 @@
 "use client"
 import React, { useEffect, useState } from "react"
+import { useStudentAuth } from "../contexts/StudentAuthContext"
 import { db } from "../firebaseClient"
 import { collection, query, where, onSnapshot } from "../lib/firestoreWrapper"
 
 export default function PresentingGroupScorer({ classId, group, presentingScorerOwnerId }) {
+  const { studentInfo } = useStudentAuth()
   const [hands, setHands] = useState([]) // Array of raised hands
   const [loading, setLoading] = useState(false)
   const [scoringHand, setScoringHand] = useState(null) // Currently scoring hand
   const [selectedScore, setSelectedScore] = useState(0)
-  const [studentAccount, setStudentAccount] = useState(null)
   const [error, setError] = useState(null)
 
-  // Get student account from localStorage
-  useEffect(() => {
-    try {
-      const authStr = typeof window !== 'undefined' ? localStorage.getItem('studentAuth') : null
-      if (authStr) {
-        const auth = JSON.parse(authStr)
-        setStudentAccount(auth.account || null)
-      }
-    } catch (e) {
-      console.error('Failed to get student account:', e)
-    }
-  }, [])
+  // Get student account from Context
+  const studentAccount = studentInfo?.account
 
   // Listen for raised hands in current class (all groups, not just presenting group)
   useEffect(() => {
@@ -30,11 +21,11 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
 
     try {
       console.log('🎯 PresentingGroupScorer listening for all hands in class:', classId)
-      const col = collection(db, 'hands_raised')
+      // 从 classes/{classId}/hands_raised 子集合读取
+      const col = collection(db, 'classes', classId, 'hands_raised')
       // Query ALL raised hands in this class, not filtered by group
       const q = query(
         col,
-        where('classId', '==', classId),
         where('active', '==', true)
       )
 

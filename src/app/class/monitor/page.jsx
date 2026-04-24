@@ -2,11 +2,12 @@
 import React, { useEffect, useState } from 'react'
 import HandsMonitor from '../../../components/HandsMonitor'
 import Scoreboard from '../../../components/Scoreboard'
+import RecalculateButton from '../../../components/RecalculateButton'
 import EndClassButton from '../../../components/EndClassButton'
 import { auth, signInWithEmail, createAccountWithEmail, signOutUser, db } from '../../../firebaseClient'
 import SignInForm from '../../../components/SignInForm'
 import { onAuthStateChanged } from 'firebase/auth'
-import { collection, getDocs, doc, setDoc, serverTimestamp, query, where, onSnapshot } from '../../../lib/firestoreWrapper'
+import { collection, getDocs, doc, setDoc, serverTimestamp, query, where, onSnapshot, deleteDoc, getDoc } from '../../../lib/firestoreWrapper'
 
 export default function MonitorPage() {
   const ALLOWED_TEACHER_EMAIL = process.env.NEXT_PUBLIC_ALLOWED_TEACHER_EMAIL || 'benwu@im.fju.edu.tw'
@@ -196,12 +197,32 @@ export default function MonitorPage() {
               setClassId(selected)
               if (db) {
                 try {
-                  await setDoc(doc(db, 'classes', selected), {
-                    name: classes.find(c => c.id === selected)?.name || selected,
+                  const classRef = doc(db, 'classes', selected)
+                  
+                  // ✅ 只刪除當前舉手狀態（hands_raised）
+                  // ❌ NOT 刪除審計日誌（participation_logs）- 那是永久紀錄！
+                  const handsRef = collection(db, 'classes', selected, 'hands_raised')
+                  const handsSnap = await getDocs(handsRef)
+                  const deleteHandsOps = handsSnap.docs.map(d => deleteDoc(doc(db, 'classes', selected, 'hands_raised', d.id)))
+                  if (deleteHandsOps.length > 0) await Promise.all(deleteHandsOps)
+                  
+                  // 3. 讀取現有班級文檔保留其他字段（包括 scores）
+                  const classSnap = await getDoc(classRef)
+                  const existingData = classSnap.exists() ? classSnap.data() : {}
+                  
+                  // 4. 啟動班級 - 只重置舉手狀態，保留 scores 和 participation_logs
+                  const selectedClass = classes.find(c => c.id === selected)
+                  await setDoc(classRef, {
+                    ...existingData,
+                    name: selectedClass?.name || selected,
                     active: true,
                     activatedAt: serverTimestamp(),
-                    activatedBy: user?.uid || null,
-                  }, { merge: true })
+                    activatedBy: user?.uid || null
+                    // ✅ 保留現有的 scores（不清空）
+                    // ✅ participation_logs 完全保留（子集合不動）
+                  })
+                  
+                  console.log('✅ 班級已啟動（舉手狀態已清除，審計日誌已保留）', selected)
                 } catch (err) {
                   console.error('無法在 Firestore 啟動班級', err)
                 }
@@ -218,6 +239,9 @@ export default function MonitorPage() {
         </div>
         <div style={{ width: 320 }}>
           <Scoreboard classId={classId} />
+          <div style={{ marginTop: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 6 }}>
+            <RecalculateButton classId={classId} />
+          </div>
         </div>
       </div>
     </div>

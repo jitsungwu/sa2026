@@ -1,29 +1,20 @@
 "use client"
 import React, { useEffect, useState } from "react"
+import { useStudentAuth } from "../contexts/StudentAuthContext"
 import { db } from "../firebaseClient"
-import { addDoc, collection, serverTimestamp, query, where, onSnapshot, updateDoc, doc, getDocs } from "../lib/firestoreWrapper"
+import { setDoc, collection, serverTimestamp, query, where, onSnapshot, updateDoc, doc, getDocs } from "../lib/firestoreWrapper"
 
 export default function RaiseHandButton({ classId, group, onRaised }) {
+  const { studentInfo } = useStudentAuth()
   const [loading, setLoading] = useState(false)
   const [raised, setRaised] = useState(false)
   const [activeDocId, setActiveDocId] = useState(null)
   const [participantId, setParticipantId] = useState(null)
-  const [studentAccount, setStudentAccount] = useState(null)
   const [presentingGroupId, setPresentingGroupId] = useState(null)
   const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
 
-  useEffect(() => {
-    // Get student account from localStorage
-    try {
-      const authStr = typeof window !== 'undefined' ? localStorage.getItem('studentAuth') : null
-      if (authStr) {
-        const auth = JSON.parse(authStr)
-        setStudentAccount(auth.account || null)
-      }
-    } catch (e) {
-      console.error('Failed to get student account:', e)
-    }
-  }, [])
+  // Get student account from Context (studentInfo.account)
+  const studentAccount = studentInfo?.account
 
   useEffect(() => {
     // allow overriding participant id via URL param for testing (e.g. ?participantId=p_123)
@@ -41,7 +32,7 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   }, [])
 
   useEffect(() => {
-    if (!participantId || !classId || !db) return
+    if (!participantId || !classId || !group || !db) return
 
     const unsubs = []
 
@@ -63,16 +54,21 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
       console.error('subscribe class doc error:', e)
     }
 
-    // listen for hands_raised changes
+    // listen for hands_raised changes (document ID is group)
     try {
-      const col = collection(db, 'hands_raised')
-      const q = query(col, where('classId', '==', classId), where('ownerId', '==', participantId), where('active', '==', true))
-      const unsub = onSnapshot(q, (snapshot) => {
-        const has = snapshot.docs.length > 0
-        setRaised(has)
-        if (has) {
-          setActiveDocId(snapshot.docs[0].id)
+      const handRef = doc(db, 'classes', classId, 'hands_raised', group)
+      const unsub = onSnapshot(handRef, (snap) => {
+        if (snap && typeof snap.data === 'function' && snap.exists()) {
+          const data = snap.data()
+          const has = data && data.active === true
+          setRaised(has)
+          if (has) {
+            setActiveDocId(snap.id)
+          } else {
+            setActiveDocId(null)
+          }
         } else {
+          setRaised(false)
           setActiveDocId(null)
         }
       }, (err) => {
@@ -86,7 +82,7 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
     return () => {
       unsubs.forEach(unsub => typeof unsub === 'function' && unsub())
     }
-  }, [participantId, classId, db])
+  }, [participantId, classId, group, db])
 
   const handleClick = async () => {
     // If a group is currently presenting
@@ -106,9 +102,11 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
     if (raised || loading) return
     setLoading(true)
     try {
-      await addDoc(
-        collection(db, "hands_raised"),
-        { classId, group, ownerId: participantId, timestamp: new Date(), active: true }
+      // 以 group 为文档 ID 写入到 classes/{classId}/hands_raised 子集合
+      // 这样每个 group 在一个 class 中只能有一条举手记录
+      await setDoc(
+        doc(db, 'classes', classId, 'hands_raised', group),
+        { classId, group, ownerId: participantId, timestamp: serverTimestamp(), active: true }
       )
       if (onRaised) onRaised()
     } catch (err) {
@@ -124,10 +122,16 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
       return
     }
     try {
+      setLoading(true)
       await updateDoc(doc(db, 'classes', classId), { presentingScorerOwnerId: studentAccount })
+      console.log('✅ Scorer claimed:', studentAccount)
+      // Wait a moment for Firestore to propagate the change
+      await new Promise(r => setTimeout(r, 1000))
     } catch (err) {
       console.error('claim scorer error:', err)
       alert('設定評分者失敗')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -135,12 +139,11 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
     if (loading) return
     setLoading(true)
     try {
-      // Re-query active hands for this participant to ensure we update the correct documents
-      const colRef = collection(db, 'hands_raised')
-      const q = query(colRef, where('classId', '==', classId), where('ownerId', '==', participantId), where('active', '==', true))
-      const snap = await getDocs(q)
-      const updates = snap.docs.map(d => updateDoc(doc(db, 'hands_raised', d.id), { active: false, cancelled: true }))
-      await Promise.all(updates)
+      // 根据 group 取消举手（文档 ID 是 group）
+      await updateDoc(
+        doc(db, "classes", classId, "hands_raised", group),
+        { active: false, cancelled: true }
+      )
       // local state will update via onSnapshot listener
     } catch (err) {
       console.error('取消舉手錯誤：', err)
