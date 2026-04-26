@@ -105,10 +105,17 @@
 - 老師指定報告組之後，限制各組舉手，改善 #28，為了確保教學流程順暢，需加入自動化清理邏輯。
 
 接受條件
-- Given: 老師透過 #28 的功能指定了新的報告組。
-- When: 系統寫入 presentingGroupId 時。
-- Then: 必須同時執行 `hands_raised` 集合的批次更新，將該班級所有 `status: "active"` 轉為 `resolved`。
-- And: 將 `isGeneralRaisingEnabled` 狀態重置為 `false`。
+- Scenario 1: 限制各組舉手
+  - Given: 老師透過 #28 的功能指定了新的報告組。
+  - When: 系統寫入 presentingGroupId 時。
+  - Then: 必須同時執行 `hands_raised` 集合的批次更新，將該班級所有 `status: "active"` 轉為 `resolved`。
+  - And: 將 `isGeneralRaisingEnabled` 狀態重置為 `false`。
+  - And: 若先前已指定 `priorityGroupId`，需一併清除 `priorityGroupId`，確保新報告流程重新開始。
+- Scenario 2: 設定優先發問組後開放舉手
+  - Given: 已設定新的報告組，且老師指定了 `priorityGroupId`。
+  - When: 老師點擊「開放舉手」按鈕。
+  - Then: 將 `isGeneralRaisingEnabled` 狀態重置為 `true`。
+  - And: 只有在 `priorityGroupId` 已設定後，才可顯示並點選「開放舉手」按鈕。
 
 需澄清問題（已回覆）
 - 資料量小（上限約 15 組），不需要考慮原子性（決定：不需 transaction，分批或單次更新皆可）。

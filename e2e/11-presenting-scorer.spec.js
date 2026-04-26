@@ -125,6 +125,9 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   await page.fill('#presenting-group-input', GROUP_ID)
   await page.click('button:has-text("設為報告組")')
 
+  // Open raising should not be available until priority group is set
+  await expect(page.locator('button:has-text("開放舉手")')).toHaveCount(0)
+
   // Wait for the monitor UI to reflect presenting group
   await page.waitForFunction((g) => {
     const el = Array.from(document.querySelectorAll('strong')).find(s => s.textContent === g)
@@ -152,8 +155,9 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   // Give Firestore time to sync the presentingGroupId
   await page.waitForTimeout(2000)
 
-  // Open a student dashboard page in a separate browser context to verify the priority group banner
-  const priorityStudentPage = await browser.newPage()
+  // Open a student dashboard page in a dedicated browser context to verify the priority group banner
+  const priorityStudentContext = await browser.newContext()
+  const priorityStudentPage = await priorityStudentContext.newPage()
   const priorityStudentAuth = {
     account: priorityStudentId,
     name: `Test Student ${priorityStudentId}`,
@@ -171,10 +175,12 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   await expect(priorityStudentPage.locator(`text=你是優先發問組 ${PRIORITY_GROUP} 組`)).toBeVisible({ timeout: 15000 })
   console.log(`✅ Priority group banner visible for group ${PRIORITY_GROUP}`)
   await priorityStudentPage.close()
+  await priorityStudentContext.close()
 
-  // Open a student page in a separate browser context to simulate claiming scorer
+  // Open a student page in a dedicated browser context to simulate claiming scorer
   // Student 413000005 from group 04 will claim the scorer role
-  const scorerPage = await browser.newPage()
+  const scorerContext = await browser.newContext()
+  const scorerPage = await scorerContext.newPage()
   const scorerAuthData = {
     account: scorerStudentId,
     name: `Test Student ${scorerStudentId}`,
@@ -271,7 +277,8 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   expect(scoreBody.givenBy).toBe(`group-${GROUP_ID}`)
 
   // Open another student page for group 01 to verify that non-presenting students cannot raise hand
-  const otherStudentPage = await browser.newPage()
+  const otherStudentContext = await browser.newContext()
+  const otherStudentPage = await otherStudentContext.newPage()
   const otherStudentAuthData = {
     account: otherStudentId,
     name: `Test Student ${otherStudentId}`,
@@ -311,8 +318,24 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   // Expect a banner/message indicating raising is not open
   await expect(otherStudentPage.locator('text=尚未開放發問')).toHaveCount(1)
 
-  // ===== CLEANUP: Clear presenting group state for next test =====
-  console.log('🧹 Cleaning up presenting group state...')
+  // Teacher opens raising so other students can raise again
+  const openRaisingBtn = page.locator('button:has-text("開放舉手")')
+  await expect(openRaisingBtn).toHaveCount(1)
+  await openRaisingBtn.click()
+  await page.waitForTimeout(2000)
+  await otherStudentPage.waitForTimeout(5000)
+
+  // After opening raising, priority group info should be cleared
+  await expect(page.locator('text=已指定優先發問組')).toHaveCount(0)
+  await expect(page.locator('text=你是優先發問組')).toHaveCount(0)
+
+  await expect(otherStudentPage.locator('button:has-text("舉手")')).toHaveCount(1)
+  await expect(otherStudentPage.locator('text=尚未開放發問')).toHaveCount(0)
+  await otherStudentPage.click('button:has-text("舉手")')
+  await otherStudentPage.waitForTimeout(2000)
+  await expect(otherStudentPage.locator('button:has-text("取消舉手")')).toHaveCount(1)
+
+  // ===== CLEANUP: Clear presenting group state for next test =====n  console.log('🧹 Cleaning up presenting group state...')
   try {
     const endPresentingBtn = page.locator('button:has-text("結束報告")')
     if (await endPresentingBtn.count() > 0) {
@@ -325,5 +348,7 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   }
 
   await scorerPage.close()
+  await scorerContext.close()
   await otherStudentPage.close()
+  await otherStudentContext.close()
 })
