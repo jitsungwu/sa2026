@@ -16,6 +16,7 @@ export default function StudentDashboardPage() {
   const [seatInfo, setSeatInfo] = useState(null)
   const [loading, setLoading] = useState(false)
   const [presentingGroupId, setPresentingGroupId] = useState(null)
+  const [priorityGroupId, setPriorityGroupId] = useState(null)
   const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
 
   // Query seat location from Firestore
@@ -81,9 +82,11 @@ export default function StudentDashboardPage() {
         if (snap && typeof snap.data === 'function') {
           const data = snap.data() || {}
           setPresentingGroupId(data.presentingGroupId || null)
+          setPriorityGroupId(data.priorityGroupId || null)
           setPresentingScorerOwnerId(data.presentingScorerOwnerId || null)
         } else {
           setPresentingGroupId(null)
+          setPriorityGroupId(null)
           setPresentingScorerOwnerId(null)
         }
       }, (err) => console.error('Listen presenting group error:', err))
@@ -129,13 +132,26 @@ export default function StudentDashboardPage() {
             </span>
           )}
         </div>
+        {priorityGroupId && (
+          <div style={{ marginTop: 12, padding: 10, backgroundColor: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: 6, color: '#0050b3' }}>
+            <strong>📌 優先發問組：{priorityGroupId} 組</strong>
+          </div>
+        )}
       </div>
 
       {/* 互動功能 */}
       <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 6, border: '1px solid #eee' }}>
         <h2 style={{ marginTop: 0 }}>互動功能</h2>
+        {priorityGroupId && (
+          <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: 6, color: '#0050b3' }}>
+            {priorityGroupId === String(studentInfo.groupId).padStart(2, '0') ? (
+              <strong>📌 你是優先發問組 {priorityGroupId} 組，請等待老師進一步指示。</strong>
+            ) : (
+              <span>📌 已指定優先發問組：{priorityGroupId} 組，其他組暫時尚未開放發問。</span>
+            )}
+          </div>
+        )}
         <RaiseHandButton classId={classId} group={studentInfo.groupId} />
-        
         {isUserInPresentingGroup() && (
           <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #ddd' }}>
             <p style={{ color: '#666', marginBottom: 16, fontSize: '1em' }}>📊 你所在的 {studentInfo.groupId} 組正在報告中</p>

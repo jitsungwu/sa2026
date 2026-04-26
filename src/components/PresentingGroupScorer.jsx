@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react"
 import { useStudentAuth } from "../contexts/StudentAuthContext"
 import { db } from "../firebaseClient"
-import { collection, query, where, onSnapshot } from "../lib/firestoreWrapper"
+import { collection, query, where, onSnapshot, doc } from "../lib/firestoreWrapper"
 
 export default function PresentingGroupScorer({ classId, group, presentingScorerOwnerId }) {
   const { studentInfo } = useStudentAuth()
@@ -11,6 +11,7 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
   const [scoringHand, setScoringHand] = useState(null) // Currently scoring hand
   const [selectedScore, setSelectedScore] = useState(0)
   const [error, setError] = useState(null)
+  const [priorityGroupId, setPriorityGroupId] = useState(null)
 
   // Get student account from Context
   const studentAccount = studentInfo?.account
@@ -52,9 +53,25 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
     }
   }, [classId, db])
 
+  useEffect(() => {
+    if (!classId || !db) return
+    const classRef = doc(db, 'classes', classId)
+    const unsubClass = onSnapshot(classRef, (snap) => {
+      if (snap && typeof snap.data === 'function') {
+        const data = snap.data() || {}
+        setPriorityGroupId(data.priorityGroupId || null)
+      } else {
+        setPriorityGroupId(null)
+      }
+    }, (err) => console.error('class doc snapshot error:', err))
+
+    return () => unsubClass()
+  }, [classId, db])
+
   const handleScore = async (handId) => {
-    if (!handId || selectedScore < 0 || selectedScore > 3) {
-      setError('請選擇 0-3 分')
+    const maxScore = scoringHand?.group === priorityGroupId ? 15 : 3
+    if (!handId || selectedScore < 0 || selectedScore > maxScore || !Number.isInteger(Number(selectedScore))) {
+      setError(`請選擇 ${maxScore} 分範圍內的整數`)
       return
     }
 
@@ -74,8 +91,9 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
         body: JSON.stringify({
           classId,
           handId,
-          points: selectedScore,
-          givenBy: studentAccount
+          points: Number(selectedScore),
+          givenByOwnerId: studentAccount,
+          givenByGroup: `group-${group}`
         })
       })
 
@@ -98,6 +116,8 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
   if (!presentingScorerOwnerId) {
     return <div style={{ color: '#999' }}>尚未指定評分者</div>
   }
+
+  const scoreLimit = scoringHand?.group === priorityGroupId ? 15 : 3
 
   return (
     <div style={{ marginTop: 16, padding: 12, backgroundColor: '#e7f3ff', borderRadius: 4, border: '1px solid #91d5ff' }}>
@@ -129,6 +149,7 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
             {hands.map((hand, idx) => (
               <div
                 key={hand.id}
+                data-hand-id={hand.id}
                 style={{
                   padding: 8,
                   backgroundColor: scoringHand?.id === hand.id ? '#fff7e6' : '#f0f2f5',
@@ -156,30 +177,47 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
                 {scoringHand?.id === hand.id && (
                   <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #d9d9d9' }}>
                     <div style={{ marginBottom: 8 }}>選擇分數：</div>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                      {[0, 1, 2, 3].map(score => (
-                        <button
-                          key={score}
-                          onClick={() => setSelectedScore(score)}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: selectedScore === score ? '#1890ff' : '#f0f0f0',
-                            color: selectedScore === score ? '#fff' : '#000',
-                            border: 'none',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            fontWeight: 'bold',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          {score}
-                        </button>
-                      ))}
-                    </div>
+                    {scoringHand?.group === priorityGroupId ? (
+                      <div style={{ marginBottom: 8 }}>
+                        <input
+                          type="number"
+                          min={0}
+                          max={15}
+                          step={1}
+                          value={selectedScore}
+                          onChange={(e) => setSelectedScore(Number(e.target.value))}
+                          style={{ width: 120, padding: 8, borderRadius: 4, border: '1px solid #d9d9d9' }}
+                        />
+                        <div style={{ marginTop: 8, fontSize: '0.85em', color: '#555' }}>
+                          優先發問組評分範圍：0-15 分
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                        {[0, 1, 2, 3].map(score => (
+                          <button
+                            key={score}
+                            onClick={() => setSelectedScore(score)}
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: selectedScore === score ? '#1890ff' : '#f0f0f0',
+                              color: selectedScore === score ? '#fff' : '#000',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              fontWeight: 'bold',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {score}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
                         onClick={() => handleScore(hand.id)}
-                        disabled={loading || selectedScore < 0 || selectedScore > 3}
+                        disabled={loading || selectedScore < 0 || selectedScore > scoreLimit || isNaN(selectedScore)}
                         style={{
                           padding: '6px 16px',
                           backgroundColor: loading ? '#999' : '#52c41a',

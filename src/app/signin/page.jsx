@@ -3,17 +3,19 @@ import React, { useState } from 'react'
 import SignInForm from '../../components/SignInForm'
 import StudentSignInForm from '../../components/StudentSignInForm'
 import StudentSignUpForm from '../../components/StudentSignUpForm'
+import DevQuickStudentLoginForm from '../../components/DevQuickStudentLoginForm'
 
 export default function SignInPage() {
-  const [mode, setMode] = useState(null) // null | 'teacher' | 'student-signin' | 'student-signup'
+  const [mode, setMode] = useState(null) // null | 'teacher' | 'student-signin' | 'student-signup' | 'student-quick-login'
+  const allowDevQuickLogin = process.env.NEXT_PUBLIC_DEV_QUICK_LOGIN === 'true'
 
   return (
-    <div style={{ padding: 24, maxWidth: 600, margin: '0 auto' }}>
+    <div style={{ padding: 24, maxWidth: 620, margin: '0 auto' }}>
       <h1>課堂管理系統</h1>
       <p style={{ marginBottom: 24, fontSize: 16 }}>請選擇登入身份</p>
 
       {!mode && (
-        <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
           <button
             className="btn btn-primary"
             onClick={() => setMode('teacher')}
@@ -28,6 +30,15 @@ export default function SignInPage() {
           >
             學生登入
           </button>
+          {allowDevQuickLogin && (
+            <button
+              className="btn btn-warning"
+              onClick={() => setMode('student-quick-login')}
+              style={{ padding: '12px 24px', fontSize: 16 }}
+            >
+              開發快速登入
+            </button>
+          )}
         </div>
       )}
 
@@ -66,6 +77,16 @@ export default function SignInPage() {
             >
               建立帳號
             </button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'student-quick-login' && (
+        <div>
+          <h2>開發快速登入</h2>
+          <p>開發專用測試登入，快速切換學生身分進入課堂互動，不會建立正式 Firebase 會話。</p>
+          <div style={{ marginTop: 12 }}>
+            <DevQuickStudentLoginForm onClose={() => setMode(null)} />
           </div>
         </div>
       )}

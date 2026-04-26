@@ -1,7 +1,7 @@
 "use client"
 import React, { useEffect, useState } from "react"
 import { db } from "../firebaseClient"
-import { collection, query, where, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, getDocs, writeBatch, getDoc, deleteDoc } from "../lib/firestoreWrapper"
+import { collection, query, where, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, getDocs, writeBatch, getDoc, deleteDoc, setDoc } from "../lib/firestoreWrapper"
 
 export default function HandsMonitor({ classId, isOwner }) {
   const [hands, setHands] = useState([])
@@ -181,8 +181,19 @@ export default function HandsMonitor({ classId, isOwner }) {
     if (!isOwner) { alert('僅老師可指定優先發問組'); return }
     if (!group || String(group).trim() === '') { alert('請輸入有效的組別 ID（請保留前置零）'); return }
     try {
-      // 設定 priorityGroupId 並同時關閉 general raising
-      await updateDoc(doc(db, 'classes', classId), { priorityGroupId: String(group).trim(), isGeneralRaisingEnabled: false })
+      const normalizedGroup = String(group).trim()
+      const classRef = doc(db, 'classes', classId)
+      const handRef = doc(db, 'classes', classId, 'hands_raised', normalizedGroup)
+      const batch = writeBatch(db)
+      batch.set(handRef, {
+        classId,
+        group: normalizedGroup,
+        ownerId: `group-${normalizedGroup}`,
+        timestamp: serverTimestamp(),
+        active: true
+      })
+      batch.update(classRef, { priorityGroupId: normalizedGroup, isGeneralRaisingEnabled: false })
+      await batch.commit()
     } catch (err) {
       console.error('指定優先發問組錯誤：', err)
     }

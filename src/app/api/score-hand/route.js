@@ -3,19 +3,19 @@ import { doc, updateDoc, collection, addDoc, serverTimestamp, getDoc, writeBatch
 
 export async function POST(request) {
   try {
-    const { classId, handId, points, givenBy } = await request.json()
+    const { classId, handId, points, givenByOwnerId, givenByGroup } = await request.json()
 
     // Validation
-    if (!classId || !handId || points === undefined || !givenBy) {
+    if (!classId || !handId || points === undefined || !givenByOwnerId || !givenByGroup) {
       return Response.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    if (points < 0 || points > 3 || !Number.isInteger(points)) {
+    if (!Number.isInteger(points) || points < 0) {
       return Response.json(
-        { error: '分數必須為 0-3 之間的整數' },
+        { error: '分數必須為 0-15 之間的整數' },
         { status: 400 }
       )
     }
@@ -46,11 +46,19 @@ export async function POST(request) {
 
     const classData = classSnap.data()
 
-    // Check if givenBy is the current scorer
-    if (classData.presentingScorerOwnerId !== givenBy) {
+    // Check if givenByOwnerId is the current scorer
+    if (classData.presentingScorerOwnerId !== givenByOwnerId) {
       return Response.json(
         { error: '非報告組組長' },
         { status: 403 }
+      )
+    }
+
+    const maxPoints = handData.group === classData.priorityGroupId ? 15 : 3
+    if (points > maxPoints) {
+      return Response.json(
+        { error: `分數必須為 0-${maxPoints} 之間的整數` },
+        { status: 400 }
       )
     }
 
@@ -63,7 +71,7 @@ export async function POST(request) {
       active: false,
       resolved: true,
       resolvedScore: points,
-      resolvedBy: givenBy,
+      resolvedBy: givenByGroup,
       resolvedAt: serverTimestamp()
     })
 
@@ -77,7 +85,9 @@ export async function POST(request) {
       points,
       timestamp: serverTimestamp(),
       handRef: handId,
-      givenBy,
+      givenBy: givenByGroup,
+      givenByGroup,
+      givenByOwnerId,
       givenByRole: 'presenting_scorer'
     })
 
@@ -95,7 +105,8 @@ export async function POST(request) {
         logId: logRef.id,
         message: '給分成功',
         group: handData.group,
-        points
+        points,
+        givenBy: givenByGroup
       },
       { status: 200 }
     )

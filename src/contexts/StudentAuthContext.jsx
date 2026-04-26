@@ -10,63 +10,53 @@ export function StudentAuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [firebaseUser, setFirebaseUser] = useState(null)
+  const [devQuickLoginActive, setDevQuickLoginActive] = useState(false)
+  const allowDevQuickLogin = process.env.NEXT_PUBLIC_DEV_QUICK_LOGIN === 'true'
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = window.localStorage.getItem('studentAuth')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (parsed && parsed.account && parsed.groupId && parsed.classId) {
+            setStudentInfo(parsed)
+            setLoading(false)
+            return () => {}
+          }
+        }
+      } catch (e) {
+        console.warn('StudentAuthContext localStorage fallback failed:', e)
+      }
+    }
+
     if (!auth) {
       setLoading(false)
       return
     }
 
-    // 先检查 URL 参数中是否有测试数据（用于 E2E 测试）
-    let urlStudentInfo = null
-    try {
-      const params = new URLSearchParams(window.location.search)
-      const participantId = params.get('participantId')
-      const group = params.get('group')
-      if (participantId && group) {
-        urlStudentInfo = {
-          account: participantId,
-          name: `Test Student ${participantId}`,
-          groupId: group,
-          classId: params.get('classId') || 'demo',
-          seatSelected: false,
-          timestamp: new Date().toISOString()
-        }
-        console.log('✅ Using URL parameters for testing:', urlStudentInfo)
-      }
-    } catch (e) {
-      console.log('No URL parameters for testing')
-    }
-
-    // 如果有 URL 测试参数，直接使用
-    if (urlStudentInfo) {
-      setStudentInfo(urlStudentInfo)
+    if (devQuickLoginActive) {
       setLoading(false)
-      return
+      return () => {}
     }
 
-    // 监听 Firebase Auth 状态变化
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
         if (user) {
-          // 用户已登入 - 获取学生信息
           setFirebaseUser(user)
-          
-          // 从自定义声明或 API 获取学生信息
-          // 首先尝试从自定义声明（如果之前设置过）
+
           const idTokenResult = await user.getIdTokenResult()
           const studentInfoFromClaims = idTokenResult.claims.studentInfo
-          
+
           if (studentInfoFromClaims) {
             setStudentInfo(studentInfoFromClaims)
           } else {
-            // 如果没有自定义声明，调用 API 获取学生信息
             const response = await fetch('/api/auth/get-student-info', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ account: user.email?.split('@')[0] })
             })
-            
+
             if (response.ok) {
               const data = await response.json()
               if (data.success && data.student) {
@@ -75,7 +65,6 @@ export function StudentAuthProvider({ children }) {
             }
           }
         } else {
-          // 用户已登出
           setFirebaseUser(null)
           setStudentInfo(null)
         }
@@ -88,10 +77,10 @@ export function StudentAuthProvider({ children }) {
     })
 
     return unsubscribe
-  }, [])
+  }, [devQuickLoginActive])
 
   const updateStudentInfo = (newInfo) => {
-    setStudentInfo(prev => ({
+    setStudentInfo((prev) => ({
       ...prev,
       ...newInfo
     }))
@@ -99,6 +88,24 @@ export function StudentAuthProvider({ children }) {
 
   const logout = async () => {
     try {
+      if (devQuickLoginActive) {
+        setDevQuickLoginActive(false)
+        setStudentInfo(null)
+        setFirebaseUser(null)
+        try {
+          if (typeof window !== 'undefined') {
+            window.localStorage.removeItem('studentAuth')
+          }
+        } catch (e) {}
+        return
+      }
+
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem('studentAuth')
+        }
+      } catch (e) {}
+
       await auth.signOut()
       setStudentInfo(null)
       setFirebaseUser(null)
@@ -108,6 +115,20 @@ export function StudentAuthProvider({ children }) {
     }
   }
 
+  const loginAsDevStudent = (devStudent) => {
+    if (!allowDevQuickLogin) {
+      throw new Error('開發快速登入功能未啟用。')
+    }
+
+    setStudentInfo({
+      ...devStudent,
+      timestamp: devStudent.timestamp || new Date().toISOString()
+    })
+    setFirebaseUser({ uid: `dev-${devStudent.account}` })
+    setDevQuickLoginActive(true)
+    setLoading(false)
+  }
+
   const value = {
     studentInfo,
     firebaseUser,
@@ -115,7 +136,9 @@ export function StudentAuthProvider({ children }) {
     error,
     updateStudentInfo,
     logout,
-    isAuthenticated: !!firebaseUser
+    loginAsDevStudent,
+    isAuthenticated: !!firebaseUser || devQuickLoginActive || !!studentInfo,
+    devQuickLoginActive
   }
 
   return (

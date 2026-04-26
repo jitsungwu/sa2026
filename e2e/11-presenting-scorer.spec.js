@@ -1,5 +1,10 @@
 import { test, expect } from './test-fixtures'
 import dotenv from 'dotenv'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 dotenv.config({ path: '.env.local' })
 
@@ -10,10 +15,25 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   const password = process.env.TEACHER_PASSWORD
   const TEST_CLASS = process.env.TEST_CLASS_ID || 'demo'
   const GROUP_ID = process.env.TEST_PRESENTING_GROUP || '04'
+  const PRIORITY_GROUP = process.env.TEST_PRIORITY_GROUP || '02'
   
   // Student accounts for testing
   const scorerStudentId = '413000005' // 04 group - will claim scorer role
   const otherStudentId = '413000001' // 01 group - will raise hand
+
+  let priorityStudentId = `41300000${PRIORITY_GROUP}`
+  try {
+    const accountsPath = path.join(__dirname, 'test-accounts.json')
+    if (fs.existsSync(accountsPath)) {
+      const accountsData = JSON.parse(fs.readFileSync(accountsPath, 'utf-8'))
+      const match = (accountsData.used || []).find(a => String(a.groupId).padStart(2, '0') === String(PRIORITY_GROUP).padStart(2, '0') && a.classId === TEST_CLASS)
+      if (match) {
+        priorityStudentId = match.account
+      }
+    }
+  } catch (err) {
+    console.warn('Could not resolve priority student account from test-accounts.json:', err.message)
+  }
 
   // Teacher page: sign in if necessary and ensure class active
   await page.goto(`${base}/class/monitor`, { waitUntil: 'domcontentloaded' })
@@ -116,7 +136,6 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   console.log('✅ Active hand cleared after setting presenting group')
 
   // Then: specify the priority group (for prioritized asking)
-  const PRIORITY_GROUP = process.env.TEST_PRIORITY_GROUP || GROUP_ID
   await page.fill('#priority-group-input', PRIORITY_GROUP)
   await page.click('button:has-text("指定優先發問組")')
 
@@ -126,17 +145,51 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
     return !!el
   }, PRIORITY_GROUP, { timeout: 8000 })
 
+  // Check priority group has auto-raised a hand entry
+  await page.waitForSelector(`li[data-group="${PRIORITY_GROUP}"]`, { timeout: 15000 })
+  console.log(`✅ Priority group ${PRIORITY_GROUP} auto-raised a hand`)
+
   // Give Firestore time to sync the presentingGroupId
   await page.waitForTimeout(2000)
+
+  // Open a student dashboard page in a separate browser context to verify the priority group banner
+  const priorityStudentPage = await browser.newPage()
+  const priorityStudentAuth = {
+    account: priorityStudentId,
+    name: `Test Student ${priorityStudentId}`,
+    groupId: PRIORITY_GROUP,
+    classId: TEST_CLASS,
+    seatSelected: true,
+    timestamp: new Date().toISOString()
+  }
+  await priorityStudentPage.goto(`${base}/signin`, { waitUntil: 'domcontentloaded' })
+  await priorityStudentPage.evaluate((data) => {
+    window.localStorage.setItem('studentAuth', JSON.stringify(data))
+  }, priorityStudentAuth)
+  await priorityStudentPage.goto(`${base}/class/${TEST_CLASS}/dashboard`, { waitUntil: 'domcontentloaded' })
+
+  await expect(priorityStudentPage.locator(`text=你是優先發問組 ${PRIORITY_GROUP} 組`)).toBeVisible({ timeout: 15000 })
+  console.log(`✅ Priority group banner visible for group ${PRIORITY_GROUP}`)
+  await priorityStudentPage.close()
 
   // Open a student page in a separate browser context to simulate claiming scorer
   // Student 413000005 from group 04 will claim the scorer role
   const scorerPage = await browser.newPage()
-  const scorerUrl = `${base}/class/student?group=${GROUP_ID}&participantId=${scorerStudentId}`
+  const scorerAuthData = {
+    account: scorerStudentId,
+    name: `Test Student ${scorerStudentId}`,
+    groupId: GROUP_ID,
+    classId: TEST_CLASS,
+    seatSelected: true,
+    timestamp: new Date().toISOString()
+  }
+  await scorerPage.goto(`${base}/signin`, { waitUntil: 'domcontentloaded' })
+  await scorerPage.evaluate((data) => {
+    window.localStorage.setItem('studentAuth', JSON.stringify(data))
+  }, scorerAuthData)
+  const scorerUrl = `${base}/class/student?group=${GROUP_ID}`
   console.log('Scorer URL:', scorerUrl)
   await scorerPage.goto(scorerUrl, { waitUntil: 'domcontentloaded' })
-  
-  // ✅ No need to set localStorage - URL parameters take priority in StudentAuthContext
 
   // Wait for the "我負責評分" button to appear (with longer timeout for Firestore data load)
   const claimBtn = scorerPage.locator('button:has-text("我負責評分")')
@@ -172,9 +225,66 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   // Wait for scoring interface to appear
   await scorerPage.waitForTimeout(2000)
 
+  // Pick the priority group hand for scoring
+  const priorityHandCard = scorerPage.locator(`span:has-text("#1 - 組別 ${PRIORITY_GROUP}")`)
+  await priorityHandCard.waitFor({ timeout: 15000 })
+  await priorityHandCard.click()
+
+  const priorityInput = scorerPage.locator('input[type="number"]')
+  await expect(priorityInput).toBeVisible({ timeout: 10000 })
+  await expect(priorityInput).toHaveAttribute('min', '0')
+  await expect(priorityInput).toHaveAttribute('max', '15')
+
+  // Verify invalid priority score is blocked at the UI and API layer
+  await priorityInput.fill('16')
+  const confirmBtn = scorerPage.locator('button:has-text("確認給分")')
+  await expect(confirmBtn).toBeDisabled({ timeout: 5000 })
+
+  const priorityHandId = await priorityHandCard.evaluate((el) => el.closest('div[data-hand-id]')?.dataset.handId)
+  const invalidResult = await scorerPage.evaluate(async ({ classId, handId, ownerId, group }) => {
+    const res = await fetch('/api/score-hand', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        classId,
+        handId,
+        points: 16,
+        givenByOwnerId: ownerId,
+        givenByGroup: group
+      })
+    })
+    return { status: res.status, body: await res.json() }
+  }, { classId: TEST_CLASS, handId: priorityHandId, ownerId: scorerStudentId, group: `group-${GROUP_ID}` })
+  expect(invalidResult.status).toBe(400)
+  expect(invalidResult.body.error).toContain('0-15')
+
+  // Score the priority group with valid points and verify API response
+  const scoreResponsePromise = scorerPage.waitForResponse(resp => resp.url().endsWith('/api/score-hand') && resp.request().method() === 'POST')
+  await priorityInput.fill('12')
+  await expect(confirmBtn).toBeEnabled({ timeout: 5000 })
+  await scorerPage.click('button:has-text("確認給分")')
+  const scoreResponse = await scoreResponsePromise
+  expect(scoreResponse.status()).toBe(200)
+  const scoreBody = await scoreResponse.json()
+  expect(scoreBody.group).toBe(PRIORITY_GROUP)
+  expect(scoreBody.points).toBe(12)
+  expect(scoreBody.givenBy).toBe(`group-${GROUP_ID}`)
+
   // Open another student page for group 01 to verify that non-presenting students cannot raise hand
   const otherStudentPage = await browser.newPage()
-  const otherUrl = `${base}/class/student?group=01&participantId=${otherStudentId}`
+  const otherStudentAuthData = {
+    account: otherStudentId,
+    name: `Test Student ${otherStudentId}`,
+    groupId: '01',
+    classId: TEST_CLASS,
+    seatSelected: true,
+    timestamp: new Date().toISOString()
+  }
+  await otherStudentPage.goto(`${base}/signin`, { waitUntil: 'domcontentloaded' })
+  await otherStudentPage.evaluate((data) => {
+    window.localStorage.setItem('studentAuth', JSON.stringify(data))
+  }, otherStudentAuthData)
+  const otherUrl = `${base}/class/student?group=01`
   console.log('Other student URL:', otherUrl)
   await otherStudentPage.goto(otherUrl, { waitUntil: 'domcontentloaded' })
   await otherStudentPage.waitForSelector(`h1:has-text("學生頁 — 班級：${TEST_CLASS}")`, { timeout: 20000 })
