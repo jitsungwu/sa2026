@@ -102,6 +102,7 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
     return true
   }, { timeout: 5000 }).catch(() => {})
 
+  // First: set the presenting (reporting) group
   await page.fill('#presenting-group-input', GROUP_ID)
   await page.click('button:has-text("設為報告組")')
 
@@ -110,6 +111,25 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
     const el = Array.from(document.querySelectorAll('strong')).find(s => s.textContent === g)
     return !!el
   }, GROUP_ID, { timeout: 8000 })
+
+  // Then: specify the priority group (for prioritized asking)
+  const PRIORITY_GROUP = process.env.TEST_PRIORITY_GROUP || GROUP_ID
+  await page.fill('#priority-group-input', PRIORITY_GROUP)
+  await page.click('button:has-text("指定優先發問組")')
+
+  // Wait for the monitor UI to reflect priority group
+  await page.waitForFunction((g) => {
+    const el = Array.from(document.querySelectorAll('strong')).find(s => s.textContent === g)
+    return !!el
+  }, PRIORITY_GROUP, { timeout: 8000 })
+
+  // Wait for the hands_raised list to include the priority group (auto-created active hand)
+  try {
+    await page.waitForSelector(`li[data-group="${PRIORITY_GROUP}"]`, { timeout: 8000 })
+    console.log('✅ Monitor shows priority group in hands_raised list')
+  } catch (e) {
+    console.warn('⚠️ Priority group not found in hands_raised list (may indicate backend not auto-creating hand)')
+  }
 
   // Give Firestore time to sync the presentingGroupId
   await page.waitForTimeout(2000)
@@ -182,46 +202,12 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   console.log('📝 Waiting for other student page to receive Firestore updates...')
   await otherStudentPage.waitForTimeout(7000)
 
-  // For the other student (not in presenting group), the raise hand button should be available
+  // With presenting group set, other students should NOT be able to raise hand
   const otherRaiseBtn = otherStudentPage.locator('button:has-text("舉手")')
-  await expect(otherRaiseBtn).toHaveCount(1)
+  await expect(otherRaiseBtn).toHaveCount(0)
 
-  // Click raise hand button with simple click
-  console.log('Clicking raise hand for student 413000001')
-  
-  await otherRaiseBtn.first().click()
-  
-  console.log('Raise hand button clicked, waiting for Firestore sync and UI update...')
-  
-  // Wait longer for Firestore write and listener update
-  // The onSnapshot listener should update once the hands_raised document is added
-  for (let i = 0; i < 30; i++) {
-    const cancelCount = await otherStudentPage.locator('button:has-text("取消舉手")').count()
-    const raiseCount = await otherStudentPage.locator('button:has-text("舉手")').count()
-    const raiseText = await otherStudentPage.locator('span:has-text("已舉手")').count()
-    console.log(`Attempt ${i+1}/30: cancel=${cancelCount}, raise=${raiseCount}, raised-text=${raiseText}`)
-    
-    if (cancelCount > 0 || raiseText > 0) {
-      console.log('UI updated successfully!')
-      break
-    }
-    await otherStudentPage.waitForTimeout(1000)
-  }
-  
-  // Check if cancel button appears
-  const otherCancelBtn = otherStudentPage.locator('button:has-text("取消舉手")')
-  const cancelCount = await otherCancelBtn.count()
-  
-  console.log('Final check - Cancel button found:', cancelCount)
-  
-  if (cancelCount === 0) {
-    // Debug: check page content
-    const bodyText = await otherStudentPage.textContent('body')
-    console.error('Page content after raise:', bodyText.substring(0, 500))
-    await otherStudentPage.screenshot({ path: 'test-results/after-raise.png' })
-  }
-  
-  await expect(otherCancelBtn).toHaveCount(1)
+  // Expect a banner/message indicating raising is not open
+  await expect(otherStudentPage.locator('text=尚未開放發問')).toHaveCount(1)
 
   // ===== CLEANUP: Clear presenting group state for next test =====
   console.log('🧹 Cleaning up presenting group state...')

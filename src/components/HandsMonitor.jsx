@@ -6,6 +6,7 @@ import { collection, query, where, orderBy, onSnapshot, serverTimestamp, updateD
 export default function HandsMonitor({ classId, isOwner }) {
   const [hands, setHands] = useState([])
   const [presentingGroup, setPresentingGroup] = useState(null)
+  const [priorityGroup, setPriorityGroup] = useState(null)
   const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
 
   useEffect(() => {
@@ -32,9 +33,11 @@ export default function HandsMonitor({ classId, isOwner }) {
       if (snap && typeof snap.data === 'function') {
         const data = snap.data() || {}
         setPresentingGroup(data.presentingGroupId || null)
+        setPriorityGroup(data.priorityGroupId || null)
         setPresentingScorerOwnerId(data.presentingScorerOwnerId || null)
       } else {
         setPresentingGroup(null)
+        setPriorityGroup(null)
         setPresentingScorerOwnerId(null)
       }
     }, (err) => console.error('class doc snapshot error:', err))
@@ -157,6 +160,17 @@ export default function HandsMonitor({ classId, isOwner }) {
     }
   }
 
+  const setPriority = async (group) => {
+    if (!isOwner) { alert('僅老師可指定優先發問組'); return }
+    if (!group || String(group).trim() === '') { alert('請輸入有效的組別 ID（請保留前置零）'); return }
+    try {
+      // 設定 priorityGroupId 並同時關閉 general raising
+      await updateDoc(doc(db, 'classes', classId), { priorityGroupId: String(group).trim(), isGeneralRaisingEnabled: false })
+    } catch (err) {
+      console.error('指定優先發問組錯誤：', err)
+    }
+  }
+
   const endPresenting = async () => {
     if (!isOwner) { alert('僅老師可結束報告'); return }
     try {
@@ -181,6 +195,7 @@ export default function HandsMonitor({ classId, isOwner }) {
               <div style={{ marginBottom: 8 }}>
                 <span style={{ marginRight: 8 }}>目前報告組：</span>
                 <strong>{presentingGroup || '無'}</strong>
+                <span style={{ marginLeft: 12 }}><strong>優先發問組：</strong> <strong>{priorityGroup || '無'}</strong></span>
                 {presentingGroup && (
                   <>
                     {!presentingScorerOwnerId ? (
@@ -192,12 +207,23 @@ export default function HandsMonitor({ classId, isOwner }) {
                   </>
                 )}
               </div>
-              <label style={{ marginRight: 8 }}>設為報告組（請保留前置零，例如 04）：</label>
-              <input id="presenting-group-input" type="text" style={{ width: 80, marginRight: 12 }} />
-              <button onClick={() => {
-                const g = document.getElementById('presenting-group-input').value
-                setPresenting(g)
-              }}>設為報告組</button>
+                <div style={{ marginTop: 8 }}>
+                  <label style={{ marginRight: 8 }}>設為報告組（請保留前置零，例如 04）：</label>
+                  <input id="presenting-group-input" type="text" style={{ width: 80, marginRight: 12 }} />
+                  <button onClick={() => {
+                    const g = document.getElementById('presenting-group-input').value
+                    setPresenting(g)
+                  }}>設為報告組</button>
+                </div>
+
+                <div style={{ marginTop: 8 }}>
+                  <label style={{ marginRight: 8 }}>指定優先發問組（請保留前置零，例如 04）：</label>
+                  <input id="priority-group-input" type="text" style={{ width: 80, marginRight: 12 }} />
+                  <button onClick={() => {
+                    const g = document.getElementById('priority-group-input').value
+                    setPriority(g)
+                  }}>指定優先發問組</button>
+                </div>
             </div>
           </div>
 
