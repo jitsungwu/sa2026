@@ -97,7 +97,6 @@
 
 ---
 
-## Issue #36: [請補上 Issue 標題]
 ## Issue #36: 老師: 設定報告組之後限制舉手
 - State: OPEN
 - URL: https://github.com/jitsungwu/sa2026/issues/36
@@ -111,7 +110,6 @@
 - Then: 必須同時執行 `hands_raised` 集合的批次更新，將該班級所有 `status: "active"` 轉為 `resolved`。
 - And: 將 `isGeneralRaisingEnabled` 狀態重置為 `false`。
 
-需澄清問題
 需澄清問題（已回覆）
 - 資料量小（上限約 15 組），不需要考慮原子性（決定：不需 transaction，分批或單次更新皆可）。
 - `isGeneralRaisingEnabled` 儲存在 `classes/{classId}`（決定：欄位位置為 `classes/{classId}`）。
@@ -120,8 +118,6 @@
 ---
 
 ---
-
-## Issue #37: [請補上 Issue 標題]
 
 ## Issue #37: 報告組給予優先組評分
  - State: OPEN

@@ -11,6 +11,7 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   const [activeDocId, setActiveDocId] = useState(null)
   const [participantId, setParticipantId] = useState(null)
   const [presentingGroupId, setPresentingGroupId] = useState(null)
+  const [priorityGroupId, setPriorityGroupId] = useState(null)
   const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
   const [generalRaisingEnabled, setGeneralRaisingEnabled] = useState(true)
 
@@ -44,11 +45,13 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
         if (snap && typeof snap.data === 'function') {
           const data = snap.data() || {}
           setPresentingGroupId(data.presentingGroupId || null)
+          setPriorityGroupId(data.priorityGroupId || null)
           setPresentingScorerOwnerId(data.presentingScorerOwnerId || null)
           // isGeneralRaisingEnabled defaults to true when undefined
           setGeneralRaisingEnabled(data.isGeneralRaisingEnabled !== false)
         } else {
           setPresentingGroupId(null)
+          setPriorityGroupId(null)
           setPresentingScorerOwnerId(null)
           setGeneralRaisingEnabled(true)
         }
@@ -150,10 +153,16 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   // Normalize group values for comparison (handle "05" vs "5" mismatch)
   const isUserInPresentingGroup = () => {
     if (!presentingGroupId || !group) return false
-    // Convert both to numbers for comparison to handle "05" vs "5" case
     const presentingNum = parseInt(String(presentingGroupId), 10)
     const groupNum = parseInt(String(group), 10)
     return presentingNum === groupNum && !isNaN(presentingNum) && !isNaN(groupNum)
+  }
+
+  const isUserInPriorityGroup = () => {
+    if (!priorityGroupId || !group) return false
+    const priorityNum = parseInt(String(priorityGroupId), 10)
+    const groupNum = parseInt(String(group), 10)
+    return priorityNum === groupNum && !isNaN(priorityNum) && !isNaN(groupNum)
   }
 
   return (
@@ -174,9 +183,17 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
           <div style={{ color: '#cf1322', fontSize: '0.9em' }}>📢 尚未開放發問</div>
         )
       ) : (
-        // No presenting group; respect generalRaisingEnabled
+        // No presenting group; respect priority or general raising state
         !raised ? (
-          generalRaisingEnabled ? (
+          priorityGroupId ? (
+            <div style={{ color: '#1890ff', fontSize: '0.95em' }}>
+              {isUserInPriorityGroup() ? (
+                <span>📌 你是優先發問組 ({priorityGroupId} 組)，請等待老師進一步指示。</span>
+              ) : (
+                <span>📌 已指定優先發問組：{priorityGroupId} 組，其他組暫時尚未開放發問。</span>
+              )}
+            </div>
+          ) : generalRaisingEnabled ? (
             <button onClick={handleClick} disabled={loading}>
               {loading ? "提交中…" : "舉手"}
             </button>
