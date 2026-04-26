@@ -80,16 +80,15 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
     console.warn('⚠️ Pre-test cleanup failed:', e.message)
   }
 
-  // Set presenting group via monitor UI
-  await page.waitForSelector('#presenting-group-input', { timeout: 10000 })
-  
-  // First, clear any previous presenting group state by clicking "結束報告" if it exists
+  // If a presenting group still exists, clear it first so we can set a new one
   const endBtn = await page.$('button:has-text("結束報告")')
   if (endBtn) {
-    await page.click('button:has-text("結束報告")')
-    // Wait for Firestore to process the update
+    await endBtn.click()
     await page.waitForTimeout(2000)
   }
+
+  // Set presenting group via monitor UI
+  await page.waitForSelector('#presenting-group-input', { timeout: 10000 })
 
   // Verify both fields are now null in the monitor UI
   await page.waitForFunction(() => {
@@ -112,6 +111,10 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
     return !!el
   }, GROUP_ID, { timeout: 8000 })
 
+  // Wait for the previously raised hand to be cleared when presenting group is set
+  await page.waitForFunction(() => !document.querySelector('li[data-group="01"]'), { timeout: 10000 })
+  console.log('✅ Active hand cleared after setting presenting group')
+
   // Then: specify the priority group (for prioritized asking)
   const PRIORITY_GROUP = process.env.TEST_PRIORITY_GROUP || GROUP_ID
   await page.fill('#priority-group-input', PRIORITY_GROUP)
@@ -122,14 +125,6 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
     const el = Array.from(document.querySelectorAll('strong')).find(s => s.textContent === g)
     return !!el
   }, PRIORITY_GROUP, { timeout: 8000 })
-
-  // Wait for the hands_raised list to include the priority group (auto-created active hand)
-  try {
-    await page.waitForSelector(`li[data-group="${PRIORITY_GROUP}"]`, { timeout: 8000 })
-    console.log('✅ Monitor shows priority group in hands_raised list')
-  } catch (e) {
-    console.warn('⚠️ Priority group not found in hands_raised list (may indicate backend not auto-creating hand)')
-  }
 
   // Give Firestore time to sync the presentingGroupId
   await page.waitForTimeout(2000)
@@ -177,16 +172,13 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   // Wait for scoring interface to appear
   await scorerPage.waitForTimeout(2000)
 
-  // Now open another student page - student from different group (413000001 from group 01)
-  // This student should be able to raise hand since they're not in the presenting group
+  // Open another student page for group 01 to verify that non-presenting students cannot raise hand
   const otherStudentPage = await browser.newPage()
-  
   const otherUrl = `${base}/class/student?group=01&participantId=${otherStudentId}`
   console.log('Other student URL:', otherUrl)
   await otherStudentPage.goto(otherUrl, { waitUntil: 'domcontentloaded' })
-  
-  // ✅ No need to set localStorage - URL parameters take priority in StudentAuthContext
-  
+  await otherStudentPage.waitForSelector(`h1:has-text("學生頁 — 班級：${TEST_CLASS}")`, { timeout: 20000 })
+
   // Capture console messages
   const consoleLogs = []
   otherStudentPage.on('console', msg => {
