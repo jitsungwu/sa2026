@@ -154,7 +154,24 @@ export default function HandsMonitor({ classId, isOwner }) {
     if (!isOwner) { alert('僅老師可設定報告組'); return }
     if (!group || String(group).trim() === '') { alert('請輸入有效的組別 ID（請保留前置零）'); return }
     try {
-      await updateDoc(doc(db, 'classes', classId), { presentingGroupId: String(group).trim() })
+      const classRef = doc(db, 'classes', classId)
+      const batch = writeBatch(db)
+      const handsQuery = query(
+        collection(db, 'classes', classId, 'hands_raised'),
+        where('active', '==', true)
+      )
+      const handsSnap = await getDocs(handsQuery)
+      handsSnap.docs.forEach((handDoc) => {
+        batch.update(
+          doc(db, 'classes', classId, 'hands_raised', handDoc.id),
+          { active: false, resolved: true }
+        )
+      })
+      batch.update(classRef, {
+        presentingGroupId: String(group).trim(),
+        isGeneralRaisingEnabled: false
+      })
+      await batch.commit()
     } catch (err) {
       console.error('設定報告組錯誤：', err)
     }
