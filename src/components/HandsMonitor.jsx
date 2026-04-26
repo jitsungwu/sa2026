@@ -8,6 +8,7 @@ export default function HandsMonitor({ classId, isOwner }) {
   const [presentingGroup, setPresentingGroup] = useState(null)
   const [priorityGroup, setPriorityGroup] = useState(null)
   const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
+  const [generalRaisingEnabled, setGeneralRaisingEnabled] = useState(true)
 
   useEffect(() => {
     if (!classId) return
@@ -35,10 +36,12 @@ export default function HandsMonitor({ classId, isOwner }) {
         setPresentingGroup(data.presentingGroupId || null)
         setPriorityGroup(data.priorityGroupId || null)
         setPresentingScorerOwnerId(data.presentingScorerOwnerId || null)
+        setGeneralRaisingEnabled(data.isGeneralRaisingEnabled !== false)
       } else {
         setPresentingGroup(null)
         setPriorityGroup(null)
         setPresentingScorerOwnerId(null)
+        setGeneralRaisingEnabled(true)
       }
     }, (err) => console.error('class doc snapshot error:', err))
 
@@ -169,6 +172,7 @@ export default function HandsMonitor({ classId, isOwner }) {
       })
       batch.update(classRef, {
         presentingGroupId: String(group).trim(),
+        priorityGroupId: null,
         isGeneralRaisingEnabled: false
       })
       await batch.commit()
@@ -202,9 +206,18 @@ export default function HandsMonitor({ classId, isOwner }) {
   const endPresenting = async () => {
     if (!isOwner) { alert('僅老師可結束報告'); return }
     try {
-      await updateDoc(doc(db, 'classes', classId), { presentingGroupId: null, presentingScorerOwnerId: null })
+      await updateDoc(doc(db, 'classes', classId), { presentingGroupId: null, presentingScorerOwnerId: null, isGeneralRaisingEnabled: true })
     } catch (err) {
       console.error('結束報告錯誤：', err)
+    }
+  }
+
+  const openRaising = async () => {
+    if (!isOwner) { alert('僅老師可開放舉手'); return }
+    try {
+      await updateDoc(doc(db, 'classes', classId), { isGeneralRaisingEnabled: true, priorityGroupId: null })
+    } catch (err) {
+      console.error('開放舉手錯誤：', err)
     }
   }
 
@@ -251,6 +264,21 @@ export default function HandsMonitor({ classId, isOwner }) {
                     const g = document.getElementById('priority-group-input').value
                     setPriority(g)
                   }}>指定優先發問組</button>
+                </div>
+                <div style={{ marginTop: 12, padding: 10, border: '1px solid #d9d9d9', borderRadius: 6, backgroundColor: '#fafafa' }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>舉手狀態：</strong> {generalRaisingEnabled ? '已開放' : '已鎖定'}
+                  </div>
+                  {!generalRaisingEnabled && priorityGroup && (
+                    <button onClick={openRaising} style={{ backgroundColor: '#1890ff', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 4 }}>
+                      開放舉手
+                    </button>
+                  )}
+                  {!generalRaisingEnabled && !priorityGroup && (
+                    <div style={{ color: '#8c8c8c', fontSize: '0.9em' }}>
+                      請先指定優先發問組，之後即可開放其他組舉手。
+                    </div>
+                  )}
                 </div>
             </div>
           </div>

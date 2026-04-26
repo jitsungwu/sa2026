@@ -92,8 +92,8 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   }, [participantId, classId, group, db])
 
   const handleClick = async () => {
-    // If global raising disabled or a group is presenting, disallow raising
-    if (!generalRaisingEnabled || presentingGroupId) {
+    // If global raising disabled, disallow raising
+    if (!generalRaisingEnabled) {
       alert('目前尚未開放發問')
       return
     }
@@ -167,25 +167,24 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
 
   return (
     <div>
-      {/* If a group is currently presenting, show presenting info and keep raising locked */}
-      {presentingGroupId ? (
-        isUserInPresentingGroup() ? (
-          <div>
-            <div style={{ marginBottom: 8, color: '#d46b08' }}>⏳ 報告組</div>
-            {/* Show claim button only if not already claimed as scorer */}
-            {presentingScorerOwnerId && studentAccount === presentingScorerOwnerId ? (
-              <div style={{ color: '#52c41a' }}>✓ 你是評分者</div>
-            ) : (
-              <button onClick={claimScorer} disabled={loading}>我負責評分</button>
-            )}
-          </div>
-        ) : (
-          <div style={{ color: '#cf1322', fontSize: '0.9em' }}>📢 尚未開放發問</div>
-        )
+      {presentingGroupId && isUserInPresentingGroup() ? (
+        <div>
+          <div style={{ marginBottom: 8, color: '#d46b08' }}>⏳ 報告組</div>
+          {/* Show claim button only if not already claimed as scorer */}
+          {presentingScorerOwnerId && studentAccount === presentingScorerOwnerId ? (
+            <div style={{ color: '#52c41a' }}>✓ 你是評分者</div>
+          ) : (
+            <button onClick={claimScorer} disabled={loading}>我負責評分</button>
+          )}
+        </div>
       ) : (
-        // No presenting group; respect priority or general raising state
+        // No presenting group or this student is not the presenting group
         !raised ? (
-          priorityGroupId ? (
+          generalRaisingEnabled ? (
+            <button onClick={handleClick} disabled={loading}>
+              {loading ? "提交中…" : "舉手"}
+            </button>
+          ) : priorityGroupId ? (
             <div style={{ color: '#1890ff', fontSize: '0.95em' }}>
               {isUserInPriorityGroup() ? (
                 <span>📌 你是優先發問組 ({priorityGroupId} 組)，請等待老師進一步指示。</span>
@@ -193,10 +192,6 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
                 <span>📌 已指定優先發問組：{priorityGroupId} 組，其他組暫時尚未開放發問。</span>
               )}
             </div>
-          ) : generalRaisingEnabled ? (
-            <button onClick={handleClick} disabled={loading}>
-              {loading ? "提交中…" : "舉手"}
-            </button>
           ) : (
             <div style={{ color: '#cf1322', fontSize: '0.9em' }}>📢 尚未開放發問</div>
           )
