@@ -12,6 +12,7 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   const [participantId, setParticipantId] = useState(null)
   const [presentingGroupId, setPresentingGroupId] = useState(null)
   const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
+  const [generalRaisingEnabled, setGeneralRaisingEnabled] = useState(true)
 
   // Get student account from Context (studentInfo.account)
   const studentAccount = studentInfo?.account
@@ -44,9 +45,12 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
           const data = snap.data() || {}
           setPresentingGroupId(data.presentingGroupId || null)
           setPresentingScorerOwnerId(data.presentingScorerOwnerId || null)
+          // isGeneralRaisingEnabled defaults to true when undefined
+          setGeneralRaisingEnabled(data.isGeneralRaisingEnabled !== false)
         } else {
           setPresentingGroupId(null)
           setPresentingScorerOwnerId(null)
+          setGeneralRaisingEnabled(true)
         }
       }, (err) => console.error('Class listen error:', err))
       unsubs.push(unsubClass)
@@ -85,19 +89,10 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
   }, [participantId, classId, group, db])
 
   const handleClick = async () => {
-    // If a group is currently presenting
-    if (presentingGroupId) {
-      if (isUserInPresentingGroup()) {
-        // Presenting group members cannot raise hand (they are scoring)
-        alert('報告組正在評分，無法舉手')
-        return
-      }
-      // For other groups: can only raise if scorer is assigned
-      if (!presentingScorerOwnerId) {
-        alert('報告組尚未指定評分者，無法舉手')
-        return
-      }
-      // If scorer is assigned, others can raise
+    // If global raising disabled or a group is presenting, disallow raising
+    if (!generalRaisingEnabled || presentingGroupId) {
+      alert('目前尚未開放發問')
+      return
     }
     if (raised || loading) return
     setLoading(true)
@@ -163,46 +158,31 @@ export default function RaiseHandButton({ classId, group, onRaised }) {
 
   return (
     <div>
-      {/* If a group is currently presenting */}
+      {/* If a group is currently presenting, show presenting info and keep raising locked */}
       {presentingGroupId ? (
-        // When presenting group is set but scorer not assigned yet
-        !presentingScorerOwnerId ? (
-          isUserInPresentingGroup() ? (
-            <div>
-              <div style={{ marginBottom: 8, color: '#d46b08' }}>⏳ 報告組</div>
-              <button onClick={claimScorer} disabled={loading}>我負責評分</button>
-            </div>
-          ) : (
-            <div style={{ color: '#cf1322', fontSize: '0.9em' }}>
-              📋 報告組尚未指定評分者，無法舉手
-            </div>
-          )
-        ) : (
-          // Scorer has been assigned
-          isUserInPresentingGroup() ? (
-            <div style={{ color: '#666', fontSize: '0.9em' }}>
-              ✓ 報告組正在評分 (評分者：{presentingScorerOwnerId})
-            </div>
-          ) : (
-            // Other groups can now raise hand
-            !raised ? (
-              <button onClick={handleClick} disabled={loading}>
-                {loading ? "提交中…" : "舉手"}
-              </button>
+        isUserInPresentingGroup() ? (
+          <div>
+            <div style={{ marginBottom: 8, color: '#d46b08' }}>⏳ 報告組</div>
+            {/* Show claim button only if not already claimed as scorer */}
+            {presentingScorerOwnerId && studentAccount === presentingScorerOwnerId ? (
+              <div style={{ color: '#52c41a' }}>✓ 你是評分者</div>
             ) : (
-              <div>
-                <span style={{ marginRight: 8 }}>已舉手</span>
-                <button onClick={handleCancel} disabled={loading}>取消舉手</button>
-              </div>
-            )
-          )
+              <button onClick={claimScorer} disabled={loading}>我負責評分</button>
+            )}
+          </div>
+        ) : (
+          <div style={{ color: '#cf1322', fontSize: '0.9em' }}>📢 尚未開放發問</div>
         )
       ) : (
-        // No group is presenting - normal raise hand
+        // No presenting group; respect generalRaisingEnabled
         !raised ? (
-          <button onClick={handleClick} disabled={loading}>
-            {loading ? "提交中…" : "舉手"}
-          </button>
+          generalRaisingEnabled ? (
+            <button onClick={handleClick} disabled={loading}>
+              {loading ? "提交中…" : "舉手"}
+            </button>
+          ) : (
+            <div style={{ color: '#cf1322', fontSize: '0.9em' }}>📢 尚未開放發問</div>
+          )
         ) : (
           <div>
             <span style={{ marginRight: 8 }}>已舉手</span>
