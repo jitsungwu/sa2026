@@ -80,25 +80,15 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
     console.warn('⚠️ Pre-test cleanup failed:', e.message)
   }
 
-  // ===== PREPARE: Have a non-presenting student raise hand before setting presenting group =====
-  const otherStudentPage = await browser.newPage()
-  const otherUrl = `${base}/class/student?group=01&participantId=${otherStudentId}`
-  await otherStudentPage.goto(otherUrl, { waitUntil: 'domcontentloaded' })
-  await otherStudentPage.waitForSelector('button:has-text("舉手")', { timeout: 15000 })
-  await otherStudentPage.click('button:has-text("舉手")')
-  await page.waitForSelector('li[data-group="01"]', { timeout: 15000 })
-  console.log('✅ Other student raised hand before presenting group set')
+  // If a presenting group still exists, clear it first so we can set a new one
+  const endBtn = await page.$('button:has-text("結束報告")')
+  if (endBtn) {
+    await endBtn.click()
+    await page.waitForTimeout(2000)
+  }
 
   // Set presenting group via monitor UI
   await page.waitForSelector('#presenting-group-input', { timeout: 10000 })
-  
-  // First, clear any previous presenting group state by clicking "結束報告" if it exists
-  const endBtn = await page.$('button:has-text("結束報告")')
-  if (endBtn) {
-    await page.click('button:has-text("結束報告")')
-    // Wait for Firestore to process the update
-    await page.waitForTimeout(2000)
-  }
 
   // Verify both fields are now null in the monitor UI
   await page.waitForFunction(() => {
@@ -182,8 +172,12 @@ test('presenting group: assign scorer and allow raising', async ({ page, browser
   // Wait for scoring interface to appear
   await scorerPage.waitForTimeout(2000)
 
-  // Use the already-open student page for other group 01 to verify the new presenting group state
+  // Open another student page for group 01 to verify that non-presenting students cannot raise hand
+  const otherStudentPage = await browser.newPage()
+  const otherUrl = `${base}/class/student?group=01&participantId=${otherStudentId}`
   console.log('Other student URL:', otherUrl)
+  await otherStudentPage.goto(otherUrl, { waitUntil: 'domcontentloaded' })
+  await otherStudentPage.waitForSelector(`h1:has-text("學生頁 — 班級：${TEST_CLASS}")`, { timeout: 20000 })
 
   // Capture console messages
   const consoleLogs = []
