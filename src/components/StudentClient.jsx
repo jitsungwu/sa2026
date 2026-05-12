@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import RaiseHandButton from "./RaiseHandButton"
 import PresentingGroupScorer from "./PresentingGroupScorer"
 import Scoreboard from "./Scoreboard"
+import HandsQueue from "./HandsQueue"
 import { db } from '../firebaseClient'
 import { collection, getDocs, doc, getDoc, query, where, onSnapshot } from '../lib/firestoreWrapper'
 
@@ -134,6 +135,7 @@ export default function StudentClient({ classId, initialGroup }) {
 
           <PresentingGroupScorer classId={classId} group={group} presentingScorerOwnerId={presentingScorerOwnerId} />
 
+          <HandsQueue classId={classId} />
           <Scoreboard classId={classId} />
 
           {locked && (
@@ -162,6 +164,7 @@ export default function StudentClient({ classId, initialGroup }) {
           )}
         </div>
 
+        <HandsQueue classId={classId} />
         <Scoreboard classId={classId} />
       </div>
     )

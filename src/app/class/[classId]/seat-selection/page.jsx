@@ -12,6 +12,30 @@ export default function SeatSelectionPage() {
   const [loadingSeat, setLoadingSeat] = useState(false)
   const [message, setMessage] = useState(null)
 
+  // Handle URL parameters for E2E testing (initialize studentAuth from URL if not already set)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !classId) return
+    if (studentInfo) return // Already authenticated
+    
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const groupParam = params.get('group')
+      const participantIdParam = params.get('participantId')
+      
+      if (groupParam) {
+        // Set temporary studentAuth for E2E testing
+        updateStudentInfo({
+          account: participantIdParam || `test_student_${Date.now()}`,
+          groupId: groupParam,
+          classId,
+          name: '測試學生'
+        })
+      }
+    } catch (e) {
+      console.warn('Failed to parse URL parameters:', e)
+    }
+  }, [classId, studentInfo, updateStudentInfo])
+
   const handleReserve = async (r, c) => {
     if (loadingSeat || !studentInfo) return
     setMessage(null)
