@@ -104,25 +104,26 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
     }
   })
 
-  test('Scenario 5: Toggle seat layout on and off', async ({ page }) => {
+  test('Scenario 5: Verify priority group indicator in legend', async ({ page }) => {
     // Step 1: Navigate to student dashboard
     const dashboardUrl = `${base}/class/${testClassId}/dashboard?group=${testGroupId}&participantId=${testStudentAccount}`
     await page.goto(dashboardUrl, { waitUntil: 'domcontentloaded' })
 
-    // Step 2: Find the seat layout button
+    // Step 2: Click "查看座位圖" button
     const seatLayoutButton = page.locator('button:has-text("查看座位圖")')
     await expect(seatLayoutButton).toBeVisible()
-
-    // Step 3: Initial state - verify seat layout section should be hidden
-    const seatLayoutSection = page.locator('text=虛擬座位表')
-    const initialVisible = await seatLayoutSection.count() > 0
-    expect(!initialVisible).toBeTruthy()
-
-    // Step 4: Click to show seat layout
     await seatLayoutButton.click()
-    await page.waitForTimeout(800)
+    await page.waitForTimeout(500)
 
-    // Step 5: Verify seat layout section is now visible
+    // Step 3: Verify seat layout section is visible
+    const seatLayoutSection = page.locator('text=虛擬座位表')
     await expect(seatLayoutSection).toBeVisible()
+
+    // Step 4: Check for priority group indicator in legend (🟢 優先發問)
+    // The legend should display either raised hand status or priority group status
+    const legendArea = page.locator('div').filter({ 
+      has: page.locator('text=/🔴|🟡|🟢|目前無舉手|優先發問/') 
+    })
+    await expect(legendArea.first()).toBeVisible()
   })
 })

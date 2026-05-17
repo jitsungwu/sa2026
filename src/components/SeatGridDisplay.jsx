@@ -13,6 +13,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
  * - currentGroupId: 當前組別 ID（互動模式需要）
  * - firstRaisedGroupId: 第一個舉手的組別 ID（紅色標記）
  * - secondRaisedGroupId: 第二個舉手的組別 ID（黃色標記）
+ * - priorityGroupId: 優先發問的組別 ID（綠色邊框標記）
  * - onReserve: 座位預約回調函數 (row, col) => Promise
  * - loading: 是否在加載中
  * - message: 訊息通知
@@ -23,6 +24,7 @@ export default function SeatGridDisplay({
   currentGroupId = null,
   firstRaisedGroupId = null,
   secondRaisedGroupId = null,
+  priorityGroupId = null,
   onReserve = null,
   loading = false,
   message = null
@@ -76,6 +78,7 @@ export default function SeatGridDisplay({
                 const isMine = occupant && String(occupant) === String(currentGroupId)
                 const isFirstRaised = occupant && String(occupant) === String(firstRaisedGroupId)
                 const isSecondRaised = occupant && String(occupant) === String(secondRaisedGroupId)
+                const isPriority = occupant && String(occupant) === String(priorityGroupId)
                 const disabled = !!occupant && !isMine
 
                 const handleClick = async () => {
@@ -102,6 +105,12 @@ export default function SeatGridDisplay({
                 // 確定文字顏色（紅色背景時使用白色文字）
                 const textColor = isFirstRaised ? 'white' : 'inherit'
 
+                // 確定邊框（優先發問組用綠色邊框）
+                let borderStyle = '1px solid #ddd'
+                if (isPriority) {
+                  borderStyle = '3px solid #52c41a' // 綠色邊框
+                }
+
                 return (
                   <button
                     key={`${zone.key}-r${r}`}
@@ -111,12 +120,12 @@ export default function SeatGridDisplay({
                       height: 40,
                       width: '100%',
                       borderRadius: 4,
-                      border: '1px solid #ddd',
+                      border: borderStyle,
                       backgroundColor,
                       cursor: (interactive && !disabled) ? 'pointer' : (disabled ? 'not-allowed' : 'default'),
                       fontWeight: 600,
                       opacity: disabled ? 0.6 : 1,
-                      transition: 'background-color 0.2s',
+                      transition: 'background-color 0.2s, border 0.2s',
                       color: textColor
                     }}
                   >

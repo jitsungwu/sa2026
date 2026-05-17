@@ -245,7 +245,8 @@ export default function StudentDashboardPage() {
           <div style={{ marginBottom: 12, fontSize: '0.9em', color: '#666' }}>
             {firstRaisedGroupId && <span>🔴 第一個舉手：{firstRaisedGroupId} 組</span>}
             {secondRaisedGroupId && <span style={{ marginLeft: 16 }}>🟡 第二個舉手：{secondRaisedGroupId} 組</span>}
-            {!firstRaisedGroupId && !secondRaisedGroupId && <span>目前無舉手</span>}
+            {priorityGroupId && <span style={{ marginLeft: 16 }}>🟢 優先發問：{priorityGroupId} 組</span>}
+            {!firstRaisedGroupId && !secondRaisedGroupId && !priorityGroupId && <span>目前無舉手</span>}
           </div>
           {!classActive ? (
             <div style={{ padding: 16, backgroundColor: '#fff2e8', border: '1px solid #ffbb96', borderRadius: 6, color: '#d46b08', textAlign: 'center' }}>
@@ -258,6 +259,7 @@ export default function StudentDashboardPage() {
               interactive={false} 
               firstRaisedGroupId={firstRaisedGroupId}
               secondRaisedGroupId={secondRaisedGroupId}
+              priorityGroupId={priorityGroupId}
             />
           )}
         </div>
