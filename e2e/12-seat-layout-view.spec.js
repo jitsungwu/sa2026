@@ -25,7 +25,7 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
       if (!response.ok) {
         console.warn('Failed to cleanup layout for test class')
       } else {
-        console.log('âœ“ Cleared Firestore layout for', testClassId)
+        console.log('??Cleared Firestore layout for', testClassId)
       }
     } catch (e) {
       console.warn('Cleanup error:', e)
@@ -35,29 +35,29 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
   test('Scenario 1: View seat layout button appears in dashboard and displays grid', async ({ page }) => {
     // Step 1: Navigate to student dashboard with URL parameters (E2E testing)
     const dashboardUrl = `${base}/class/${testClassId}/dashboard?group=${testGroupId}&participantId=${testStudentAccount}`
-    await page.goto(dashboardUrl, { waitUntil: 'networkidle' })
+    await page.goto(dashboardUrl, { waitUntil: 'domcontentloaded' })
 
     // Step 2: Verify dashboard loads
-    await expect(page.locator('h1')).toContainText('å­¸ç”Ÿäº’å‹•å„€è¡¨æ¿')
+    await expect(page.locator('h1')).toContainText('å­¸ç?äº’å??€è¡¨æ¿')
 
-    // Step 3: Find and click "æŸ¥çœ‹åº§ä½åœ–" button
-    const seatLayoutButton = page.locator('button:has-text("æŸ¥çœ‹åº§ä½åœ–")')
+    // Step 3: Find and click "?¥ç?åº§ä??? button
+    const seatLayoutButton = page.locator('button:has-text("?¥ç?åº§ä???)')
     await expect(seatLayoutButton).toBeVisible()
     
     // Step 4: Click the button
     await seatLayoutButton.click()
 
     // Step 5: Verify seat layout section appears
-    const seatLayoutSection = page.locator('h2:has-text("è™›æ“¬åº§ä½è¡¨")')
+    const seatLayoutSection = page.locator('h2:has-text("?›æ“¬åº§ä?è¡?)')
     await expect(seatLayoutSection).toBeVisible()
 
     // Step 6: Verify the grid displays (should show at least 3 zones)
-    const zoneLabels = page.locator('div:has-text("å·¦å€"), div:has-text("ä¸­å€"), div:has-text("å³å€")')
+    const zoneLabels = page.locator('div:has-text("å·¦å?"), div:has-text("ä¸­å?"), div:has-text("?³å?")')
     const zoneCount = await zoneLabels.count()
     expect(zoneCount).toBeGreaterThanOrEqual(3)
 
-    // Step 7: Verify button text changes to "éš±è—åº§ä½åœ–"
-    const hideButton = page.locator('button:has-text("éš±è—åº§ä½åœ–")')
+    // Step 7: Verify button text changes to "?±è?åº§ä???
+    const hideButton = page.locator('button:has-text("?±è?åº§ä???)')
     await expect(hideButton).toBeVisible()
 
     // Step 8: Click to hide and verify layout disappears
@@ -73,28 +73,28 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ classId: testClassId, active: false })
       })
-      console.log('âœ“ Set class to inactive')
+      console.log('??Set class to inactive')
     } catch (e) {
       console.warn('Failed to set class inactive:', e)
     }
 
     // Step 2: Navigate to student dashboard
     const dashboardUrl = `${base}/class/${testClassId}/dashboard?group=${testGroupId}&participantId=${testStudentAccount}`
-    await page.goto(dashboardUrl, { waitUntil: 'networkidle' })
+    await page.goto(dashboardUrl, { waitUntil: 'domcontentloaded' })
 
-    // Step 3: Click "æŸ¥çœ‹åº§ä½åœ–" button
-    const seatLayoutButton = page.locator('button:has-text("æŸ¥çœ‹åº§ä½åœ–")')
+    // Step 3: Click "?¥ç?åº§ä??? button
+    const seatLayoutButton = page.locator('button:has-text("?¥ç?åº§ä???)')
     await seatLayoutButton.click()
 
     // Step 4: Verify warning message appears
-    const warningBox = page.locator('div:has-text("èª²ç¨‹å°šæœªå•Ÿå‹•")')
+    const warningBox = page.locator('div:has-text("èª²ç?å°šæœª?Ÿå?")')
     await expect(warningBox).toBeVisible()
 
-    const warningText = page.locator('text=è«‹ç­‰å¾…æ•™å¸«å•Ÿå‹•èª²ç¨‹å¾ŒæŸ¥çœ‹åº§ä½è¡¨')
+    const warningText = page.locator('text=è«‹ç?å¾…æ?å¸«å??•èª²ç¨‹å??¥ç?åº§ä?è¡?)
     await expect(warningText).toBeVisible()
 
     // Step 5: Verify grid is NOT displayed
-    const zoneLabels = page.locator('div:has-text("å·¦å€")')
+    const zoneLabels = page.locator('div:has-text("å·¦å?")')
     const zoneCount = await zoneLabels.count()
     expect(zoneCount).toBe(0)
 
@@ -105,7 +105,7 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ classId: testClassId, active: true })
       })
-      console.log('âœ“ Restored class to active state')
+      console.log('??Restored class to active state')
     } catch (e) {
       console.warn('Failed to restore class status:', e)
     }
@@ -119,7 +119,7 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ classId: testClassId, active: true })
       })
-      console.log('âœ“ Set class to active')
+      console.log('??Set class to active')
     } catch (e) {
       console.warn('Failed to set class active:', e)
     }
@@ -129,24 +129,24 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
 
     // Step 3: Navigate to student dashboard
     const dashboardUrl = `${base}/class/${testClassId}/dashboard?group=${testGroupId}&participantId=${testStudentAccount}`
-    await page.goto(dashboardUrl, { waitUntil: 'networkidle' })
+    await page.goto(dashboardUrl, { waitUntil: 'domcontentloaded' })
 
-    // Step 4: Click "æŸ¥çœ‹åº§ä½åœ–" button
-    const seatLayoutButton = page.locator('button:has-text("æŸ¥çœ‹åº§ä½åœ–")')
+    // Step 4: Click "?¥ç?åº§ä??? button
+    const seatLayoutButton = page.locator('button:has-text("?¥ç?åº§ä???)')
     await seatLayoutButton.click()
 
     // Step 5: Verify seat layout grid appears (NOT the warning)
-    const warningBox = page.locator('div:has-text("èª²ç¨‹å°šæœªå•Ÿå‹•")')
+    const warningBox = page.locator('div:has-text("èª²ç?å°šæœª?Ÿå?")')
     const warningCount = await warningBox.count()
     expect(warningCount).toBe(0)
 
     // Step 6: Verify at least one zone is displayed
-    const zoneLabels = page.locator('div:has-text("å·¦å€")')
+    const zoneLabels = page.locator('div:has-text("å·¦å?")')
     const zoneCount = await zoneLabels.count()
     expect(zoneCount).toBeGreaterThan(0)
 
     // Step 7: Verify seat buttons/cells are rendered
-    const seatButtons = page.locator('div:has-text("è™›æ“¬åº§ä½è¡¨")').locator('button')
+    const seatButtons = page.locator('div:has-text("?›æ“¬åº§ä?è¡?)').locator('button')
     const seatCount = await seatButtons.count()
     expect(seatCount).toBeGreaterThan(0)
   })
@@ -165,22 +165,22 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
 
     // Step 2: Navigate to dashboard
     const dashboardUrl = `${base}/class/${testClassId}/dashboard?group=${testGroupId}&participantId=${testStudentAccount}`
-    await page.goto(dashboardUrl, { waitUntil: 'networkidle' })
+    await page.goto(dashboardUrl, { waitUntil: 'domcontentloaded' })
 
-    // Step 3: Click "æŸ¥çœ‹åº§ä½åœ–"
-    const seatLayoutButton = page.locator('button:has-text("æŸ¥çœ‹åº§ä½åœ–")')
+    // Step 3: Click "?¥ç?åº§ä???
+    const seatLayoutButton = page.locator('button:has-text("?¥ç?åº§ä???)')
     await expect(seatLayoutButton).toBeVisible()
     await seatLayoutButton.click()
 
     // Step 4: Verify the seat layout section appears
-    const seatLayoutSection = page.locator('h2:has-text("è™›æ“¬åº§ä½è¡¨")')
+    const seatLayoutSection = page.locator('h2:has-text("?›æ“¬åº§ä?è¡?)')
     await expect(seatLayoutSection).toBeVisible()
 
-    // Step 5: Verify legend area exists (may show "ç›®å‰ç„¡èˆ‰æ‰‹" or raised hand info)
-    const legendArea = page.locator('div').filter({ hasText: /ç¬¬ä¸€å€‹èˆ‰æ‰‹|ç¬¬äºŒå€‹èˆ‰æ‰‹|ç›®å‰ç„¡èˆ‰æ‰‹/ }).first()
+    // Step 5: Verify legend area exists (may show "?®å??¡è??? or raised hand info)
+    const legendArea = page.locator('div').filter({ hasText: /ç¬¬ä??‹è??‹|ç¬¬ä??‹è??‹|?®å??¡è??? }).first()
     await expect(legendArea).toBeVisible()
 
-    console.log('âœ“ Seat layout and legend displayed correctly')
+    console.log('??Seat layout and legend displayed correctly')
   })
 
   test('Scenario 5: Display "no raised hands" when no one is raising', async ({ page }) => {
@@ -197,30 +197,30 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
 
     // Step 2: Navigate to dashboard
     const dashboardUrl = `${base}/class/${testClassId}/dashboard?group=${testGroupId}&participantId=${testStudentAccount}`
-    await page.goto(dashboardUrl, { waitUntil: 'networkidle' })
+    await page.goto(dashboardUrl, { waitUntil: 'domcontentloaded' })
 
-    // Step 3: Click "æŸ¥çœ‹åº§ä½åœ–"
-    const seatLayoutButton = page.locator('button:has-text("æŸ¥çœ‹åº§ä½åœ–")')
+    // Step 3: Click "?¥ç?åº§ä???
+    const seatLayoutButton = page.locator('button:has-text("?¥ç?åº§ä???)')
     await expect(seatLayoutButton).toBeVisible()
     await seatLayoutButton.click()
 
-    // Step 4: Verify the legend shows status (either "ç›®å‰ç„¡èˆ‰æ‰‹" or raised hands)
-    const legendArea = page.locator('div').filter({ hasText: /ç¬¬ä¸€å€‹èˆ‰æ‰‹|ç¬¬äºŒå€‹èˆ‰æ‰‹|ç›®å‰ç„¡èˆ‰æ‰‹/ }).first()
+    // Step 4: Verify the legend shows status (either "?®å??¡è??? or raised hands)
+    const legendArea = page.locator('div').filter({ hasText: /ç¬¬ä??‹è??‹|ç¬¬ä??‹è??‹|?®å??¡è??? }).first()
     await expect(legendArea).toBeVisible()
 
-    // Try to find the "ç›®å‰ç„¡èˆ‰æ‰‹" text if no hands are raised
+    // Try to find the "?®å??¡è??? text if no hands are raised
     try {
-      const noRaisedText = page.locator('text=ç›®å‰ç„¡èˆ‰æ‰‹')
+      const noRaisedText = page.locator('text=?®å??¡è???)
       const isVisible = await noRaisedText.isVisible()
       if (isVisible) {
-        console.log('âœ“ "ç›®å‰ç„¡èˆ‰æ‰‹" message displayed')
+        console.log('??"?®å??¡è??? message displayed')
       } else {
-        console.log('â„¹ï¸ Raised hands are currently active in this test')
+        console.log('?¹ï? Raised hands are currently active in this test')
       }
     } catch (e) {
-      console.log('â„¹ï¸ Could not verify "ç›®å‰ç„¡èˆ‰æ‰‹" message')
+      console.log('?¹ï? Could not verify "?®å??¡è??? message')
     }
 
-    console.log('âœ“ Legend display verified')
+    console.log('??Legend display verified')
   })
 })
