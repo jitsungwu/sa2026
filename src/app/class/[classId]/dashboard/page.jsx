@@ -81,8 +81,6 @@ export default function StudentDashboardPage() {
                 else if (col === 3) zone = '右區'
 
                 setSeatInfo({ row, col, zone })
-                // 更新 Context 的 seatSelected，確保一致性
-                updateStudentInfo({ seatSelected: true })
                 return
               }
             }
@@ -101,7 +99,7 @@ export default function StudentDashboardPage() {
     }
 
     fetchSeatInfo()
-  }, [studentInfo, classId, updateStudentInfo])
+  }, [studentInfo, classId])
 
   // Listen for presenting group info
   useEffect(() => {
