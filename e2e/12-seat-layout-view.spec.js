@@ -5,7 +5,7 @@ import { test, expect } from './test-fixtures'
  * This ensures tests align with actual classroom data structure
  */
 
-test.describe('Issue #8: Student View Seat Layout', () => {
+test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', () => {
   const base = process.env.BASE_URL || 'http://localhost:3000'
   const testClassId = process.env.TEST_CLASS_ID || 'demo'
   const testStudentAccount = process.env.TEST_STUDENT_ACCOUNT || '413000001'
@@ -137,5 +137,54 @@ test.describe('Issue #8: Student View Seat Layout', () => {
     const seatButtons = page.locator('div:has-text("虛擬座位表")').locator('button')
     const seatCount = await seatButtons.count()
     expect(seatCount).toBeGreaterThan(0)
+  })
+
+  test('Scenario 4: Mark first and second raised hands with correct colors', async ({ page, firebaseApp }) => {
+    // Step 1: Ensure class is active
+    const db = firebaseApp.firestore()
+    const classRef = db.collection('classes').doc(testClassId)
+    await classRef.update({ active: true })
+
+    // Step 2: Create sample raised hands (group 02 and group 03)
+    const handsRef = db.collection('classes').doc(testClassId).collection('hands_raised')
+    
+    // Clear existing hands
+    const existingHands = await handsRef.get()
+    for (const doc of existingHands.docs) {
+      await doc.ref.delete()
+    }
+
+    // Add group 02 as first raiser (earlier timestamp)
+    await handsRef.doc('group-02').set({
+      groupId: '02',
+      timestamp: new Date(Date.now() - 5000), // 5 seconds ago
+      status: 'active'
+    })
+
+    // Add group 03 as second raiser (later timestamp)
+    await handsRef.doc('group-03').set({
+      groupId: '03',
+      timestamp: new Date(Date.now() - 2000), // 2 seconds ago
+      status: 'active'
+    })
+
+    console.log('✓ Created sample raised hands data')
+
+    // Step 3: Navigate to dashboard
+    const dashboardUrl = `${base}/class/${testClassId}/dashboard?group=${testGroupId}&participantId=${testStudentAccount}`
+    await page.goto(dashboardUrl, { waitUntil: 'networkidle' })
+
+    // Step 4: Click "查看座位圖"
+    const seatLayoutButton = page.locator('button:has-text("查看座位圖")')
+    await seatLayoutButton.click()
+
+    // Step 5: Verify the legend shows first and second raised hands
+    await expect(page.locator('text=第一個舉手：02 組')).toBeVisible()
+    await expect(page.locator('text=第二個舉手：03 組')).toBeVisible()
+
+    // Step 6: Cleanup - remove the test data
+    await handsRef.doc('group-02').delete()
+    await handsRef.doc('group-03').delete()
+    console.log('✓ Cleaned up test data')
   })
 })
