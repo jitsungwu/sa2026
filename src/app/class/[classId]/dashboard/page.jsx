@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useStudentAuth } from '../../../../contexts/StudentAuthContext'
 import { db } from '../../../../firebaseClient'
-import { doc, getDoc, onSnapshot } from '../../../../lib/firestoreWrapper'
+import { doc, getDoc, onSnapshot, collection, query, orderBy } from '../../../../lib/firestoreWrapper'
+import { limit } from 'firebase/firestore'
 import RaiseHandButton from '../../../../components/RaiseHandButton'
 import Scoreboard from '../../../../components/Scoreboard'
 import PresentingGroupScorer from '../../../../components/PresentingGroupScorer'
@@ -22,6 +23,8 @@ export default function StudentDashboardPage() {
   const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
   const [showSeatLayout, setShowSeatLayout] = useState(false)
   const [classActive, setClassActive] = useState(false)
+  const [firstRaisedGroupId, setFirstRaisedGroupId] = useState(null)
+  const [secondRaisedGroupId, setSecondRaisedGroupId] = useState(null)
 
   // Handle URL parameters for E2E testing (initialize studentAuth from URL if not already set)
   useEffect(() => {
@@ -127,6 +130,33 @@ export default function StudentDashboardPage() {
     }
   }, [classId, db])
 
+  // Listen for the first two raised hands
+  useEffect(() => {
+    if (!classId || !db) return
+
+    try {
+      const handsRef = collection(db, `classes/${classId}/hands_raised`)
+      const q = query(handsRef, orderBy('timestamp', 'asc'), limit(2))
+      const unsub = onSnapshot(q, (snap) => {
+        const hands = []
+        if (snap && snap.docs) {
+          snap.docs.forEach((doc) => {
+            const data = doc.data() || {}
+            if (data.status === 'active') {
+              hands.push(data.groupId || null)
+            }
+          })
+        }
+        setFirstRaisedGroupId(hands[0] || null)
+        setSecondRaisedGroupId(hands[1] || null)
+      }, (err) => console.warn('Listen hands_raised error:', err))
+
+      return () => unsub()
+    } catch (e) {
+      console.error('subscribe hands_raised error:', e)
+    }
+  }, [classId, db])
+
   // Check if user is in presenting group
   const isUserInPresentingGroup = () => {
     if (!presentingGroupId || !studentInfo) return false
@@ -214,13 +244,23 @@ export default function StudentDashboardPage() {
       {showSeatLayout && (
         <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f0f8ff', borderRadius: 6, border: '1px solid #b3d9ff' }}>
           <h2 style={{ marginTop: 0 }}>虛擬座位表</h2>
+          <div style={{ marginBottom: 12, fontSize: '0.9em', color: '#666' }}>
+            {firstRaisedGroupId && <span>🔴 第一個舉手：{firstRaisedGroupId} 組</span>}
+            {secondRaisedGroupId && <span style={{ marginLeft: 16 }}>🟡 第二個舉手：{secondRaisedGroupId} 組</span>}
+            {!firstRaisedGroupId && !secondRaisedGroupId && <span>目前無舉手</span>}
+          </div>
           {!classActive ? (
             <div style={{ padding: 16, backgroundColor: '#fff2e8', border: '1px solid #ffbb96', borderRadius: 6, color: '#d46b08', textAlign: 'center' }}>
               <strong>⚠️ 課程尚未啟動</strong>
               <p style={{ margin: '8px 0 0 0' }}>請等待教師啟動課程後查看座位表。</p>
             </div>
           ) : (
-            <SeatGridDisplay classId={classId} interactive={false} presentingGroupId={presentingGroupId} />
+            <SeatGridDisplay 
+              classId={classId} 
+              interactive={false} 
+              firstRaisedGroupId={firstRaisedGroupId}
+              secondRaisedGroupId={secondRaisedGroupId}
+            />
           )}
         </div>
       )}
