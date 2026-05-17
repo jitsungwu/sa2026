@@ -36,8 +36,8 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
     await page.waitForTimeout(500)
 
     // Step 5: Verify seat layout grid appears after clicking
-    const gridSection = page.locator('[class*="grid"], [class*="seat"]')
-    await expect(gridSection.first()).toBeVisible()
+    const gridSection = page.locator('.seat-grid-display')
+    await expect(gridSection).toBeVisible()
   })
 
   test('Scenario 2: Show warning when class is not activated', async ({ page }) => {
@@ -91,8 +91,8 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
     await expect(warningText).not.toBeVisible()
 
     // Step 5: Verify seat layout grid is displayed
-    const gridSection = page.locator('[class*="grid"], [class*="seat"]')
-    await expect(gridSection.first()).toBeVisible()
+    const gridSection = page.locator('.seat-grid-display')
+    await expect(gridSection).toBeVisible()
   })
 
   test('Scenario 4: Verify legend area and raised hand status display', async ({
@@ -134,20 +134,20 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
     await expect(seatLayoutButton).toBeVisible()
 
     // Step 3: Initial state - seat layout should be hidden
-    const gridSection = page.locator('[class*="grid"], [class*="seat"]')
-    let gridVisible = await gridSection.first().isVisible()
+    const gridSection = page.locator('.seat-grid-display')
+    let gridVisible = await gridSection.isVisible()
     expect(!gridVisible).toBeTruthy()
 
     // Step 4: Click to show seat layout
     await seatLayoutButton.click()
     await page.waitForTimeout(300)
-    gridVisible = await gridSection.first().isVisible()
+    gridVisible = await gridSection.isVisible()
     expect(gridVisible).toBeTruthy()
 
     // Step 5: Click again to hide seat layout
     await seatLayoutButton.click()
     await page.waitForTimeout(300)
-    gridVisible = await gridSection.first().isVisible()
+    gridVisible = await gridSection.isVisible()
     expect(!gridVisible).toBeTruthy()
   })
 })

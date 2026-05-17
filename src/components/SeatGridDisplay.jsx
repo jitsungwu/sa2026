@@ -49,7 +49,7 @@ export default function SeatGridDisplay({
   ]
 
   return (
-    <div>
+    <div className="seat-grid-display">
       {/* 白板（前方）*/}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
         <div style={{ width: 'calc(33.333% - 8px)', padding: '12px 16px', backgroundColor: '#8b5fbf', color: 'white', borderRadius: 8, textAlign: 'center', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
@@ -65,7 +65,7 @@ export default function SeatGridDisplay({
       )}
 
       {/* 座位表網格 - 三區域布局 */}
-      <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginBottom: 20 }} className="seat-grid">
         {zones.map((zone) => (
           <div key={zone.key} style={{ textAlign: 'center', flex: 1 }}>
             <div style={{ marginBottom: 8, fontWeight: 600 }}>{zone.label}</div>
