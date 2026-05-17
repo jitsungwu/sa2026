@@ -134,17 +134,21 @@ export default function StudentDashboardPage() {
 
     try {
       const handsRef = collection(db, `classes/${classId}/hands_raised`)
-      const q = query(handsRef, orderBy('timestamp', 'asc'), limit(2))
+      const q = query(handsRef, orderBy('timestamp', 'desc'), limit(2))
       const unsub = onSnapshot(q, (snap) => {
         const hands = []
         if (snap && snap.docs) {
           snap.docs.forEach((doc) => {
             const data = doc.data() || {}
-            if (data.status === 'active') {
-              hands.push(data.groupId || null)
+            // Check for active field (boolean) - active: true means hand is raised
+            if (data.active === true) {
+              // Use 'group' field which contains the group ID
+              hands.push(data.group || null)
             }
           })
         }
+        // Reverse array since we fetched in descending order to get latest 2
+        hands.reverse()
         setFirstRaisedGroupId(hands[0] || null)
         setSecondRaisedGroupId(hands[1] || null)
       }, (err) => console.warn('Listen hands_raised error:', err))
