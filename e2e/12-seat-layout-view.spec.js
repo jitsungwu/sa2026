@@ -58,14 +58,13 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
     await expect(seatLayoutSection).toBeVisible()
 
     // Step 4: Verify legend area shows some status indicator
-    // The legend should display any of: raised hands or priority group or "no hands" message
+    // The legend should display any of: raised hands, priority group, or "no hands" message
     const pageContent = await page.content()
     const hasLegendContent = 
       pageContent.includes('🔴') || 
       pageContent.includes('🟡') || 
-      pageContent.includes('🟢') || 
-      pageContent.includes('目前無舉手') ||
-      pageContent.includes('優先發問')
+      pageContent.includes('優先發問') ||
+      pageContent.includes('目前無舉手')
     expect(hasLegendContent).toBeTruthy()
   })
 
@@ -126,11 +125,14 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
     const seatLayoutSection = page.locator('text=虛擬座位表')
     await expect(seatLayoutSection).toBeVisible()
 
-    // Step 4: Check for priority group indicator in legend (🟢 優先發問)
-    // The legend should display either raised hand status or priority group status
-    const legendArea = page.locator('div').filter({ 
-      has: page.locator('text=/🔴|🟡|🟢|目前無舉手|優先發問/') 
-    })
-    await expect(legendArea.first()).toBeVisible()
+    // Step 4: Check for priority group indicator in legend
+    // Priority group is displayed with red background and white text (same as first raised hand)
+    const pageContent = await page.content()
+    const hasStatusIndicator = 
+      pageContent.includes('優先發問') || 
+      pageContent.includes('🔴') || 
+      pageContent.includes('🟡') ||
+      pageContent.includes('目前無舉手')
+    expect(hasStatusIndicator).toBeTruthy()
   })
 })

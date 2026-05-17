@@ -243,9 +243,9 @@ export default function StudentDashboardPage() {
         <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f0f8ff', borderRadius: 6, border: '1px solid #b3d9ff' }}>
           <h2 style={{ marginTop: 0 }}>虛擬座位表</h2>
           <div style={{ marginBottom: 12, fontSize: '0.9em', color: '#666' }}>
-            {firstRaisedGroupId && <span>🔴 第一個舉手：{firstRaisedGroupId} 組</span>}
+            {priorityGroupId && <span style={{ backgroundColor: '#ff4d4f', color: 'white', padding: '2px 8px', borderRadius: 4, marginRight: 12 }}>優先發問：{priorityGroupId} 組</span>}
+            {firstRaisedGroupId && !priorityGroupId && <span>🔴 第一個舉手：{firstRaisedGroupId} 組</span>}
             {secondRaisedGroupId && <span style={{ marginLeft: 16 }}>🟡 第二個舉手：{secondRaisedGroupId} 組</span>}
-            {priorityGroupId && <span style={{ marginLeft: 16 }}>🟢 優先發問：{priorityGroupId} 組</span>}
             {!firstRaisedGroupId && !secondRaisedGroupId && !priorityGroupId && <span>目前無舉手</span>}
           </div>
           {!classActive ? (

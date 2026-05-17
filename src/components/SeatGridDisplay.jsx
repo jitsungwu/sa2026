@@ -92,10 +92,12 @@ export default function SeatGridDisplay({
 
                 // 確定背景色
                 let backgroundColor = 'white'
-                if (isFirstRaised) {
-                  backgroundColor = '#ff4d4f' // 紅色
+                if (isPriority) {
+                  backgroundColor = '#ff4d4f' // 紅色（優先發問組）
+                } else if (isFirstRaised) {
+                  backgroundColor = '#ff4d4f' // 紅色（第一個舉手）
                 } else if (isSecondRaised) {
-                  backgroundColor = '#ffd666' // 黃色
+                  backgroundColor = '#ffd666' // 黃色（第二個舉手）
                 } else if (isMine) {
                   backgroundColor = '#ffd966'
                 } else if (disabled) {
@@ -103,13 +105,7 @@ export default function SeatGridDisplay({
                 }
 
                 // 確定文字顏色（紅色背景時使用白色文字）
-                const textColor = isFirstRaised ? 'white' : 'inherit'
-
-                // 確定邊框（優先發問組用綠色邊框）
-                let borderStyle = '1px solid #ddd'
-                if (isPriority) {
-                  borderStyle = '3px solid #52c41a' // 綠色邊框
-                }
+                const textColor = (isPriority || isFirstRaised) ? 'white' : 'inherit'
 
                 return (
                   <button
@@ -120,12 +116,12 @@ export default function SeatGridDisplay({
                       height: 40,
                       width: '100%',
                       borderRadius: 4,
-                      border: borderStyle,
+                      border: '1px solid #ddd',
                       backgroundColor,
                       cursor: (interactive && !disabled) ? 'pointer' : (disabled ? 'not-allowed' : 'default'),
                       fontWeight: 600,
                       opacity: disabled ? 0.6 : 1,
-                      transition: 'background-color 0.2s, border 0.2s',
+                      transition: 'background-color 0.2s',
                       color: textColor
                     }}
                   >
