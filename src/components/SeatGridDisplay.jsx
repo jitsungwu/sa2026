@@ -11,6 +11,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
  * - classId: 班級 ID
  * - interactive: 是否允許點擊預約（默認 false）
  * - currentGroupId: 當前組別 ID（互動模式需要）
+ * - presentingGroupId: 正在報告的組別 ID（用於標記）
  * - onReserve: 座位預約回調函數 (row, col) => Promise
  * - loading: 是否在加載中
  * - message: 訊息通知
@@ -19,6 +20,7 @@ export default function SeatGridDisplay({
   classId, 
   interactive = false, 
   currentGroupId = null,
+  presentingGroupId = null,
   onReserve = null,
   loading = false,
   message = null
@@ -70,6 +72,7 @@ export default function SeatGridDisplay({
                 const r = ri + 1
                 const occupant = (layout[r] || {})[zone.col]
                 const isMine = occupant && String(occupant) === String(currentGroupId)
+                const isPresenting = occupant && String(occupant) === String(presentingGroupId)
                 const disabled = !!occupant && !isMine
 
                 const handleClick = async () => {
@@ -90,15 +93,20 @@ export default function SeatGridDisplay({
                       height: 40,
                       width: '100%',
                       borderRadius: 4,
-                      border: '1px solid #ddd',
-                      backgroundColor: isMine ? '#ffd966' : (disabled ? '#f2f2f2' : 'white'),
+                      border: isPresenting ? '2px solid #ff4d4f' : '1px solid #ddd',
+                      backgroundColor: isPresenting ? '#ff7875' : (isMine ? '#ffd966' : (disabled ? '#f2f2f2' : 'white')),
                       cursor: (interactive && !disabled) ? 'pointer' : (disabled ? 'not-allowed' : 'default'),
                       fontWeight: 600,
                       opacity: disabled ? 0.6 : 1,
-                      transition: 'background-color 0.2s'
+                      transition: 'background-color 0.2s',
+                      color: isPresenting ? 'white' : 'inherit',
+                      position: 'relative'
                     }}
                   >
-                    {occupant ? `第 ${String(occupant).padStart(2, '0')} 組` : `${zone.label}第 ${r} 排`}
+                    <span>{occupant ? `第 ${String(occupant).padStart(2, '0')} 組` : `${zone.label}第 ${r} 排`}</span>
+                    {isPresenting && (
+                      <span style={{ display: 'block', fontSize: '0.75em', marginTop: 2 }}>🎤 報告中</span>
+                    )}
                   </button>
                 )
               })}

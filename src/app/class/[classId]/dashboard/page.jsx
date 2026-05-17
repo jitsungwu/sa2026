@@ -220,7 +220,7 @@ export default function StudentDashboardPage() {
               <p style={{ margin: '8px 0 0 0' }}>請等待教師啟動課程後查看座位表。</p>
             </div>
           ) : (
-            <SeatGridDisplay classId={classId} interactive={false} />
+            <SeatGridDisplay classId={classId} interactive={false} presentingGroupId={presentingGroupId} />
           )}
         </div>
       )}
