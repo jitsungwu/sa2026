@@ -134,20 +134,24 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
     await expect(seatLayoutButton).toBeVisible()
 
     // Step 3: Initial state - seat layout should be hidden
-    const gridSection = page.locator('.seat-grid-display')
-    let gridVisible = await gridSection.isVisible()
+    let gridSection = page.locator('.seat-grid-display')
+    let gridVisible = await gridSection.count() > 0
     expect(!gridVisible).toBeTruthy()
 
     // Step 4: Click to show seat layout
     await seatLayoutButton.click()
-    await page.waitForTimeout(300)
-    gridVisible = await gridSection.isVisible()
-    expect(gridVisible).toBeTruthy()
+    await page.waitForTimeout(500)
+    gridSection = page.locator('.seat-grid-display')
+    await expect(gridSection).toBeVisible()
 
-    // Step 5: Click again to hide seat layout
+    // Step 5: Verify button is still clickable and click again to hide
+    await expect(seatLayoutButton).toBeEnabled()
     await seatLayoutButton.click()
-    await page.waitForTimeout(300)
-    gridVisible = await gridSection.isVisible()
+    await page.waitForTimeout(500)
+
+    // Step 6: Verify seat layout is hidden
+    gridSection = page.locator('.seat-grid-display')
+    gridVisible = await gridSection.count() > 0
     expect(!gridVisible).toBeTruthy()
   })
 })
