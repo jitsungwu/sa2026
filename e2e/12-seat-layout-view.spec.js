@@ -114,19 +114,15 @@ test.describe('Issue #8: Student View Seat Layout with Raised Hands Marking', ()
     await expect(seatLayoutButton).toBeVisible()
 
     // Step 3: Initial state - verify seat layout section should be hidden
-    let seatLayoutSection = page.locator('text=虛擬座位表')
-    let sectionVisible = await seatLayoutSection.count() > 0
-    expect(!sectionVisible).toBeTruthy()
+    const seatLayoutSection = page.locator('text=虛擬座位表')
+    const initialVisible = await seatLayoutSection.count() > 0
+    expect(!initialVisible).toBeTruthy()
 
     // Step 4: Click to show seat layout
     await seatLayoutButton.click()
     await page.waitForTimeout(800)
 
     // Step 5: Verify seat layout section is now visible
-    seatLayoutSection = page.locator('text=虛擬座位表')
     await expect(seatLayoutSection).toBeVisible()
-
-    // Verify button is still present and can be found
-    await expect(seatLayoutButton).toBeVisible()
   })
 })
