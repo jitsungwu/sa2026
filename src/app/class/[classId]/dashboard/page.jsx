@@ -3,11 +3,13 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useStudentAuth } from '../../../../contexts/StudentAuthContext'
 import { db } from '../../../../firebaseClient'
-import { doc, getDoc, onSnapshot } from '../../../../lib/firestoreWrapper'
+import { doc, getDoc, onSnapshot, collection, query, orderBy } from '../../../../lib/firestoreWrapper'
+import { limit } from 'firebase/firestore'
 import RaiseHandButton from '../../../../components/RaiseHandButton'
 import Scoreboard from '../../../../components/Scoreboard'
 import PresentingGroupScorer from '../../../../components/PresentingGroupScorer'
 import HandsQueue from '../../../../components/HandsQueue'
+import SeatGridDisplay from '../../../../components/SeatGridDisplay'
 
 export default function StudentDashboardPage() {
   const params = useParams()
@@ -19,6 +21,10 @@ export default function StudentDashboardPage() {
   const [presentingGroupId, setPresentingGroupId] = useState(null)
   const [priorityGroupId, setPriorityGroupId] = useState(null)
   const [presentingScorerOwnerId, setPresentingScorerOwnerId] = useState(null)
+  const [showSeatLayout, setShowSeatLayout] = useState(false)
+  const [classActive, setClassActive] = useState(false)
+  const [firstRaisedGroupId, setFirstRaisedGroupId] = useState(null)
+  const [secondRaisedGroupId, setSecondRaisedGroupId] = useState(null)
 
   // Handle URL parameters for E2E testing (initialize studentAuth from URL if not already set)
   useEffect(() => {
@@ -75,8 +81,6 @@ export default function StudentDashboardPage() {
                 else if (col === 3) zone = '右區'
 
                 setSeatInfo({ row, col, zone })
-                // 更新 Context 的 seatSelected，確保一致性
-                updateStudentInfo({ seatSelected: true })
                 return
               }
             }
@@ -95,7 +99,7 @@ export default function StudentDashboardPage() {
     }
 
     fetchSeatInfo()
-  }, [studentInfo, classId, updateStudentInfo])
+  }, [studentInfo, classId])
 
   // Listen for presenting group info
   useEffect(() => {
@@ -109,16 +113,49 @@ export default function StudentDashboardPage() {
           setPresentingGroupId(data.presentingGroupId || null)
           setPriorityGroupId(data.priorityGroupId || null)
           setPresentingScorerOwnerId(data.presentingScorerOwnerId || null)
+          setClassActive(data.active || false)
         } else {
           setPresentingGroupId(null)
           setPriorityGroupId(null)
           setPresentingScorerOwnerId(null)
+          setClassActive(false)
         }
       }, (err) => console.error('Listen presenting group error:', err))
 
       return () => unsub()
     } catch (e) {
       console.error('subscribe class doc error:', e)
+    }
+  }, [classId, db])
+
+  // Listen for the first two raised hands
+  useEffect(() => {
+    if (!classId || !db) return
+
+    try {
+      const handsRef = collection(db, `classes/${classId}/hands_raised`)
+      const q = query(handsRef, orderBy('timestamp', 'desc'), limit(2))
+      const unsub = onSnapshot(q, (snap) => {
+        const hands = []
+        if (snap && snap.docs) {
+          snap.docs.forEach((doc) => {
+            const data = doc.data() || {}
+            // Check for active field (boolean) - active: true means hand is raised
+            if (data.active === true) {
+              // Use 'group' field which contains the group ID
+              hands.push(data.group || null)
+            }
+          })
+        }
+        // Reverse array since we fetched in descending order to get latest 2
+        hands.reverse()
+        setFirstRaisedGroupId(hands[0] || null)
+        setSecondRaisedGroupId(hands[1] || null)
+      }, (err) => console.warn('Listen hands_raised error:', err))
+
+      return () => unsub()
+    } catch (e) {
+      console.error('subscribe hands_raised error:', e)
     }
   }, [classId, db])
 
@@ -177,6 +214,22 @@ export default function StudentDashboardPage() {
           </div>
         )}
         <RaiseHandButton classId={classId} group={studentInfo.groupId} />
+        <button
+          onClick={() => setShowSeatLayout(!showSeatLayout)}
+          style={{
+            marginTop: 16,
+            padding: '10px 16px',
+            backgroundColor: '#1890ff',
+            color: 'white',
+            border: 'none',
+            borderRadius: 4,
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: '1em'
+          }}
+        >
+          {showSeatLayout ? '隱藏座位圖' : '查看座位圖'}
+        </button>
         {isUserInPresentingGroup() && (
           <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #ddd' }}>
             <p style={{ color: '#666', marginBottom: 16, fontSize: '1em' }}>📊 你所在的 {studentInfo.groupId} 組正在報告中</p>
@@ -188,6 +241,33 @@ export default function StudentDashboardPage() {
           </div>
         )}
       </div>
+
+      {/* 座位圖顯示 */}
+      {showSeatLayout && (
+        <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f0f8ff', borderRadius: 6, border: '1px solid #b3d9ff' }}>
+          <h2 style={{ marginTop: 0 }}>虛擬座位表</h2>
+          <div style={{ marginBottom: 12, fontSize: '0.9em', color: '#666' }}>
+            {priorityGroupId && <span style={{ backgroundColor: '#ff4d4f', color: 'white', padding: '2px 8px', borderRadius: 4, marginRight: 12 }}>優先發問：{priorityGroupId} 組</span>}
+            {firstRaisedGroupId && !priorityGroupId && <span>🔴 第一個舉手：{firstRaisedGroupId} 組</span>}
+            {secondRaisedGroupId && <span style={{ marginLeft: 16 }}>🟡 第二個舉手：{secondRaisedGroupId} 組</span>}
+            {!firstRaisedGroupId && !secondRaisedGroupId && !priorityGroupId && <span>目前無舉手</span>}
+          </div>
+          {!classActive ? (
+            <div style={{ padding: 16, backgroundColor: '#fff2e8', border: '1px solid #ffbb96', borderRadius: 6, color: '#d46b08', textAlign: 'center' }}>
+              <strong>⚠️ 課程尚未啟動</strong>
+              <p style={{ margin: '8px 0 0 0' }}>請等待教師啟動課程後查看座位表。</p>
+            </div>
+          ) : (
+            <SeatGridDisplay 
+              classId={classId} 
+              interactive={false} 
+              firstRaisedGroupId={firstRaisedGroupId}
+              secondRaisedGroupId={secondRaisedGroupId}
+              priorityGroupId={priorityGroupId}
+            />
+          )}
+        </div>
+      )}
 
       {/* 即時舉手順序 */}
       <HandsQueue classId={classId} />
