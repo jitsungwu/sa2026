@@ -141,8 +141,11 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
         <div style={{ color: '#999', fontStyle: 'italic' }}>目前沒有學生舉手</div>
       ) : (
         <div>
-          <p style={{ marginBottom: 12, fontSize: '0.9em', color: '#666' }}>
+          <p style={{ marginBottom: 8, fontSize: '0.9em', color: '#666' }}>
             等待評分的舉手：{hands.length} 個
+          </p>
+          <p style={{ marginBottom: 12, fontSize: '0.85em', color: '#595959' }}>
+            請點選右側「評分」按鈕，選擇要給分的舉手組別。
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -155,23 +158,36 @@ export default function PresentingGroupScorer({ classId, group, presentingScorer
                   backgroundColor: scoringHand?.id === hand.id ? '#fff7e6' : '#f0f2f5',
                   borderRadius: 4,
                   border: scoringHand?.id === hand.id ? '2px solid #faad14' : '1px solid #d9d9d9',
-                  cursor: studentAccount === presentingScorerOwnerId ? 'pointer' : 'not-allowed',
-                  opacity: studentAccount === presentingScorerOwnerId ? 1 : 0.6,
                   transition: 'all 0.2s'
                 }}
-                onClick={() => {
-                  if (studentAccount === presentingScorerOwnerId) {
-                    setScoringHand(hand)
-                  }
-                }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 'bold' }}>
-                    #{idx + 1} - 組別 {hand.group}
-                  </span>
-                  <span style={{ fontSize: '0.85em', color: '#999' }}>
-                    {hand.timestamp?.toLocaleTimeString?.() || '時間'}
-                  </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 'bold' }}>#{idx + 1} - 組別 {hand.group}</div>
+                    <div style={{ fontSize: '0.85em', color: '#999' }}>
+                      {hand.timestamp?.toLocaleTimeString?.() || '時間'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (studentAccount === presentingScorerOwnerId) {
+                        setScoringHand(hand)
+                      }
+                    }}
+                    disabled={studentAccount !== presentingScorerOwnerId}
+                    style={{
+                      padding: '6px 14px',
+                      backgroundColor: studentAccount === presentingScorerOwnerId ? (scoringHand?.id === hand.id ? '#1890ff' : '#40a9ff') : '#f0f0f0',
+                      color: studentAccount === presentingScorerOwnerId ? '#fff' : '#8c8c8c',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: studentAccount === presentingScorerOwnerId ? 'pointer' : 'not-allowed',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    {scoringHand?.id === hand.id ? '已選擇評分' : '評分'}
+                  </button>
                 </div>
 
                 {scoringHand?.id === hand.id && (

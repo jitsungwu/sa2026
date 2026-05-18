@@ -235,7 +235,18 @@ export default function MonitorPage() {
 
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', marginTop: 12 }}>
         <div style={{ flex: 1 }}>
-          <HandsMonitor classId={classId} isOwner={user && classOwner && user.uid === classOwner} />
+          <HandsMonitor 
+            classId={classId} 
+            isOwner={
+              // Allow edit access if:
+              // 1. User matches classOwner, OR
+              // 2. User is logged in AND classOwner is null (class was activated but activatedBy was not set)
+              user && (
+                (classOwner && user.uid === classOwner) ||
+                (!classOwner) // Allow edit if no owner is recorded
+              )
+            } 
+          />
         </div>
         <div style={{ width: 320 }}>
           <Scoreboard classId={classId} />
